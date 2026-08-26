@@ -1,0 +1,3 @@
+# Shell scripts must keep LF endings wherever they are checked out; CI runs
+# eng/run-tests.sh on a Linux host, where a CR would break every line.
+*.sh text eol=lf

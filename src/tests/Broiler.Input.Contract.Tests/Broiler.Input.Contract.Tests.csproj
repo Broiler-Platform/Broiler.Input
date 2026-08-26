@@ -18,22 +18,22 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Broiler.Input\Broiler.Input.csproj" />
-    <ProjectReference Include="..\Broiler.Input.Camera\Broiler.Input.Camera.csproj" />
-    <ProjectReference Include="..\Broiler.Input.Camera.Windows\Broiler.Input.Camera.Windows.csproj" />
-    <ProjectReference Include="..\Broiler.Input.Windows\Broiler.Input.Windows.csproj" />
-    <ProjectReference Include="..\Broiler.Input.Keyboard\Broiler.Input.Keyboard.csproj" />
-    <ProjectReference Include="..\Broiler.Input.Keyboard.Windows\Broiler.Input.Keyboard.Windows.csproj" />
-    <ProjectReference Include="..\Broiler.Input.Legacy\Broiler.Input.Legacy.csproj" />
-    <ProjectReference Include="..\Broiler.Input.Microphone\Broiler.Input.Microphone.csproj" />
-    <ProjectReference Include="..\Broiler.Input.Microphone.Windows\Broiler.Input.Microphone.Windows.csproj" />
-    <ProjectReference Include="..\Broiler.Input.Mouse\Broiler.Input.Mouse.csproj" />
-    <ProjectReference Include="..\Broiler.Input.Mouse.Windows\Broiler.Input.Mouse.Windows.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input\Broiler.Input.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Camera\Broiler.Input.Camera.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Camera.Windows\Broiler.Input.Camera.Windows.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Windows\Broiler.Input.Windows.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Keyboard\Broiler.Input.Keyboard.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Keyboard.Windows\Broiler.Input.Keyboard.Windows.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Legacy\Broiler.Input.Legacy.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Microphone\Broiler.Input.Microphone.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Microphone.Windows\Broiler.Input.Microphone.Windows.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Mouse\Broiler.Input.Mouse.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Mouse.Windows\Broiler.Input.Mouse.Windows.csproj" />
     <ProjectReference Include="..\Broiler.Input.Testing\Broiler.Input.Testing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\docs\api-baseline.txt" Link="api-baseline.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\docs\api-baseline.txt" Link="api-baseline.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

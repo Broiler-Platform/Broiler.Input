@@ -17,9 +17,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Broiler.Input.Linux\Broiler.Input.Linux.csproj" />
-    <ProjectReference Include="..\Broiler.Input.Keyboard.Linux\Broiler.Input.Keyboard.Linux.csproj" />
-    <ProjectReference Include="..\Broiler.Input.Mouse.Linux\Broiler.Input.Mouse.Linux.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Linux\Broiler.Input.Linux.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Keyboard.Linux\Broiler.Input.Keyboard.Linux.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Mouse.Linux\Broiler.Input.Mouse.Linux.csproj" />
   </ItemGroup>
 
 </Project>
