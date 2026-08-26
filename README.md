@@ -5,6 +5,44 @@ It owns device discovery, lifecycle, timing, bounded delivery, capture leases,
 diagnostics, and platform providers. Graphics, DOM event construction, browser
 permissions, encoding, playback, and presentation remain outside the component.
 
+## Packages
+
+The suite ships as one package per assembly, versioned in lockstep. The current
+release is a **prerelease**, so package managers need the prerelease flag:
+
+```bash
+dotnet add package Broiler.Input.All --prerelease
+```
+
+`Broiler.Input.All` is a dependencies-only meta-package that pulls in the
+platform-neutral contracts. Platform backends are deliberately separate, so a
+consumer takes only the ones it runs on:
+
+| Package | Contents |
+| --- | --- |
+| `Broiler.Input` | Device lifecycle, discovery, timing, and delivery contracts |
+| `Broiler.Input.All` | Meta-package over the neutral contracts below |
+| `Broiler.Input.Camera` · `.Keyboard` · `.Microphone` · `.Mouse` · `.Pen` · `.Text` · `.Touch` | Per-kind neutral abstractions |
+| `Broiler.Input.Legacy` | Window-callback compatibility adapter for migration |
+| `Broiler.Input.Windows` + `Broiler.Input.<Kind>.Windows` | Windows providers (`net10.0-windows`) |
+| `Broiler.Input.Linux` + `Broiler.Input.<Kind>.Linux` | Linux evdev providers |
+| `Broiler.Input.Android` + `Broiler.Input.<Kind>.Android` | Android translation layer (no Android SDK dependency) |
+
+`Broiler.Input.Testing`, `Broiler.Input.Linux.Diagnostic`, and the `*.Tests`
+runners are development-only and are not published.
+
+## Repository layout
+
+```text
+Broiler.Input.slnx          solution
+Directory.Build.props       component-level build and packaging overrides
+eng/Broiler.Packaging.props vendored, suite-wide packaging metadata
+eng/icon.png                package icon
+src/<project>/              shipping projects
+src/tests/<project>/        test runners and test support
+docs/                       ADRs, roadmap, API baseline, validation notes
+```
+
 ## Projects
 
 ```text
@@ -84,37 +122,94 @@ Background Raw Input and evdev event streaming require explicit acknowledgement.
 Diagnostics must not emit typed text, movement timelines, or native device
 paths by default.
 
+## Build
+
+The solution carries six configurations. The platform-suffixed ones select which
+provider family participates, so the neutral contracts stay buildable on a host
+that has neither Windows nor Linux backends available:
+
+| Configuration | Builds |
+| --- | --- |
+| `Debug` / `Release` | Neutral contracts, the Android backends, and their tests |
+| `Debug-Windows` / `Release-Windows` | The above plus the Windows providers and the contract tests |
+| `Debug-Linux` / `Release-Linux` | The above plus the Linux providers, the evdev diagnostic tool, and the Linux tests |
+
+```bash
+dotnet build Broiler.Input.slnx -c Release-Windows
+```
+
+A plain `dotnet build Broiler.Input.slnx` uses `Debug`, which deliberately skips
+every Windows and Linux provider. Projects that carry no platform suffix declare
+only `Debug` and `Release`, so the solution maps `*-Windows` and `*-Linux` onto
+those base configurations — a neutral project built under `Release-Linux` still
+writes to `bin/Release`.
+
 ## Validation
 
-The normal contract runner is deterministic and hardware-free:
+The suites are self-hosted console runners, not a test framework, so there is
+nothing for `dotnet test` to discover. `eng/run-tests.sh` starts the ones that
+apply to a configuration and is what CI calls:
+
+```bash
+dotnet build Broiler.Input.slnx -c Release-Windows --nologo
+bash ./eng/run-tests.sh Release-Windows
+```
+
+The individual runners are below.
+
+The contract runner is deterministic and hardware-free. It is a Windows target,
+so it builds under the `-Windows` configurations:
 
 ```powershell
-dotnet build Broiler.Input\Broiler.Input.slnx
-dotnet run --project Broiler.Input\Broiler.Input.Contract.Tests\Broiler.Input.Contract.Tests.csproj --no-build
+dotnet build Broiler.Input.slnx -c Release-Windows
+dotnet run --project src\tests\Broiler.Input.Contract.Tests\Broiler.Input.Contract.Tests.csproj -c Release-Windows --no-build
 ```
 
 The Android translation, provider lifecycle, and boundary tests run on any host,
-because the Android backends carry no Android SDK dependency:
+because the Android backends carry no Android SDK dependency. That runner is
+platform-neutral, so it uses the base `Release` configuration even when the
+solution was built as `Release-Windows`:
 
 ```sh
-dotnet run --project Broiler.Input/Broiler.Input.Android.Tests/Broiler.Input.Android.Tests.csproj
+dotnet run --project src/tests/Broiler.Input.Android.Tests/Broiler.Input.Android.Tests.csproj -c Release
+```
+
+The Linux runner needs the `-Linux` configurations and a Linux host:
+
+```sh
+dotnet run --project src/tests/Broiler.Input.Linux.Tests/Broiler.Input.Linux.Tests.csproj -c Release-Linux
 ```
 
 The executable public API baseline remains at
-[`docs/api-baseline.txt`](docs/api-baseline.txt); the contract-test
-project copies that file into its output and compares it with the runtime
-assemblies.
+[`docs/api-baseline.txt`](https://github.com/Broiler-Platform/Broiler.Input/blob/main/docs/api-baseline.txt);
+the contract-test project copies that file into its output and compares it with
+the runtime assemblies.
 
 Opt-in device checks and privacy gates are in
-[hardware validation](docs/hardware-validation.md).
+[hardware validation](https://github.com/Broiler-Platform/Broiler.Input/blob/main/docs/hardware-validation.md).
+
+## Packing
+
+Packing is per configuration, because each one contributes a different provider
+family. Both runs emit the neutral packages; the builds are deterministic, so
+the second run reproduces the first byte for byte:
+
+```bash
+dotnet pack Broiler.Input.slnx -c Release-Windows -o artifacts
+dotnet pack Broiler.Input.slnx -c Release-Linux   -o artifacts
+```
+
+That produces 23 packages plus matching `.snupkg` symbol packages. Version comes
+from `VersionPrefix` and `VersionSuffix` in `eng/Broiler.Packaging.props` and is
+shared by the whole suite.
 
 ## Documentation
 
-- [Current roadmap](docs/roadmap.md)
-- [ADR index](docs/adr/README.md)
-- [Camera contracts and Windows provider](docs/camera.md)
-- [Microphone contracts and Windows provider](docs/microphone.md)
-- [Hardware and privacy validation](docs/hardware-validation.md)
+- [Current roadmap](https://github.com/Broiler-Platform/Broiler.Input/blob/main/docs/roadmap.md)
+- [ADR index](https://github.com/Broiler-Platform/Broiler.Input/blob/main/docs/adr/README.md)
+- [Camera contracts and Windows provider](https://github.com/Broiler-Platform/Broiler.Input/blob/main/docs/camera.md)
+- [Microphone contracts and Windows provider](https://github.com/Broiler-Platform/Broiler.Input/blob/main/docs/microphone.md)
+- [Hardware and privacy validation](https://github.com/Broiler-Platform/Broiler.Input/blob/main/docs/hardware-validation.md)
 
 The current Linux keyboard/mouse scope is intentionally limited. Layout-aware
 text input, IME, touchpad policy, gestures, touch, pen, and gamepad require

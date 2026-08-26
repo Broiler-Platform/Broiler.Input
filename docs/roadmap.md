@@ -32,9 +32,9 @@ tracks only work that is still open.
 
 Android is the first consumer of the Touch, Pen, and Text contracts, so it is the
 first real test of whether they are correct. The cross-component sequencing,
-ownership, and exit gates are in
-[the root roadmap](../../docs/ROADMAP.md#a2--real-touch-pen-and-ime-input) and
-[the Android application architecture](../../docs/architecture/android.md).
+ownership, and exit gates live in the aggregate Broiler repository, under
+`docs/ROADMAP.md` ("A2 — real touch, pen, and IME input") and
+`docs/architecture/android.md`. They are not reproduced in this repository.
 
 **Landed.** `Broiler.Input.Android` plus the `Touch`, `Pen`, `Keyboard`, and
 `Text` Android backends, and the missing neutral provider contracts they needed

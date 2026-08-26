@@ -20,15 +20,13 @@
     <DefineConstants Condition="'$(BroilerTargetOperatingSystem)' == 'Linux'">$(DefineConstants);LINUX</DefineConstants>
     <DefineConstants Condition="'$(BroilerTargetOperatingSystem)' == 'Windows'">$(DefineConstants);WINDOWS</DefineConstants>
 
-    <Authors>Broiler</Authors>
-    <Company>Broiler</Company>
-    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <RepositoryType>git</RepositoryType>
+    <!-- Component-level overrides. Authors, Company, Copyright, license,
+         documentation, and warning policy come from Broiler.Packaging.props
+         above and are deliberately not restated here. -->
+    <PackageProjectUrl>https://github.com/Broiler-Platform/Broiler.Input</PackageProjectUrl>
     <PackageTags>broiler;input;devices</PackageTags>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 </Project>
 
