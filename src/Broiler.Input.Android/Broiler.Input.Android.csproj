@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Broiler.Input.Android</RootNamespace>
+    <AssemblyName>Broiler.Input.Android</AssemblyName>
+    <PackageId>Broiler.Input.Android</PackageId>
+    <Description>Shared Android input translation for Broiler: MotionEvent and KeyEvent constants, key mapping, coordinate space, and device descriptors.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Keyboard is referenced for KeyboardKey/KeyboardModifierState, which the shared key mapping
+         produces. No Android SDK reference: this assembly translates primitives, so it builds and
+         is testable without the android workload. -->
+    <ProjectReference Include="..\Broiler.Input\Broiler.Input.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Keyboard\Broiler.Input.Keyboard.csproj" />
+  </ItemGroup>
+
+</Project>

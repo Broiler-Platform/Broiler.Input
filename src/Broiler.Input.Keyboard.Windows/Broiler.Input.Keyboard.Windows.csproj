@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Broiler.Input.Keyboard.Windows</RootNamespace>
+    <AssemblyName>Broiler.Input.Keyboard.Windows</AssemblyName>
+    <PackageId>Broiler.Input.Keyboard.Windows</PackageId>
+    <Description>Windows keyboard input provider and message translator for Broiler.</Description>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Configurations>Debug;Release;Debug-Windows;Release-Windows</Configurations>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Broiler.Input.Keyboard\Broiler.Input.Keyboard.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Windows\Broiler.Input.Windows.csproj" />
+  </ItemGroup>
+
+</Project>

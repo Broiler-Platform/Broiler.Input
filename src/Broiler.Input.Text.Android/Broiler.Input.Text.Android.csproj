@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Broiler.Input.Text.Android</RootNamespace>
+    <AssemblyName>Broiler.Input.Text.Android</AssemblyName>
+    <PackageId>Broiler.Input.Text.Android</PackageId>
+    <Description>Android InputConnection text and composition provider for Broiler.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The test runner reaches the internal translation helpers for focused coverage. -->
+    <InternalsVisibleTo Include="Broiler.Input.Android.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Broiler.Input.Text\Broiler.Input.Text.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Android\Broiler.Input.Android.csproj" />
+  </ItemGroup>
+
+</Project>

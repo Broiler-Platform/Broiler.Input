@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Broiler.Input.Testing</RootNamespace>
+    <AssemblyName>Broiler.Input.Testing</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <Description>No-hardware fake providers and reusable contract checks for Broiler.Input.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Broiler.Input\Broiler.Input.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Camera\Broiler.Input.Camera.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Microphone\Broiler.Input.Microphone.csproj" />
+  </ItemGroup>
+
+</Project>

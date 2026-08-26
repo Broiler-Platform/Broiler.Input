@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Broiler.Input.Microphone</RootNamespace>
+    <AssemblyName>Broiler.Input.Microphone</AssemblyName>
+    <PackageId>Broiler.Input.Microphone</PackageId>
+    <Description>Platform-neutral microphone input abstraction for Broiler.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Broiler.Input\Broiler.Input.csproj" />
+  </ItemGroup>
+
+</Project>

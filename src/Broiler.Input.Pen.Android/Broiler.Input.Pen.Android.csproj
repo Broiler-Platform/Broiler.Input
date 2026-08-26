@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Broiler.Input.Pen.Android</RootNamespace>
+    <AssemblyName>Broiler.Input.Pen.Android</AssemblyName>
+    <PackageId>Broiler.Input.Pen.Android</PackageId>
+    <Description>Android MotionEvent stylus input provider for Broiler.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The test runner reaches the internal translation helpers for focused coverage. -->
+    <InternalsVisibleTo Include="Broiler.Input.Android.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Broiler.Input.Pen\Broiler.Input.Pen.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Android\Broiler.Input.Android.csproj" />
+  </ItemGroup>
+
+</Project>

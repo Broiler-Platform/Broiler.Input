@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Broiler.Input.Mouse.Linux</RootNamespace>
+    <AssemblyName>Broiler.Input.Mouse.Linux</AssemblyName>
+    <PackageId>Broiler.Input.Mouse.Linux</PackageId>
+    <Description>Linux evdev mouse input provider for Broiler.</Description>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Configurations>Debug;Release;Debug-Linux;Release-Linux</Configurations>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Broiler.Input.Mouse\Broiler.Input.Mouse.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Linux\Broiler.Input.Linux.csproj" />
+  </ItemGroup>
+
+</Project>

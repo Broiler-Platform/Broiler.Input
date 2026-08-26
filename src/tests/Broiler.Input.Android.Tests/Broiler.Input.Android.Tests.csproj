@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Broiler.Input.Android.Tests</RootNamespace>
+    <AssemblyName>Broiler.Input.Android.Tests</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Broiler.Input.Android\Broiler.Input.Android.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Touch.Android\Broiler.Input.Touch.Android.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Pen.Android\Broiler.Input.Pen.Android.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Keyboard.Android\Broiler.Input.Keyboard.Android.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Text.Android\Broiler.Input.Text.Android.csproj" />
+  </ItemGroup>
+
+</Project>

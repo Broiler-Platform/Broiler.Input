@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Broiler.Input.Legacy</RootNamespace>
+    <AssemblyName>Broiler.Input.Legacy</AssemblyName>
+    <PackageId>Broiler.Input.Legacy</PackageId>
+    <Description>Legacy window-callback compatibility adapter for Broiler.Input migration.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Broiler.Input.Keyboard\Broiler.Input.Keyboard.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Mouse\Broiler.Input.Mouse.csproj" />
+  </ItemGroup>
+
+</Project>

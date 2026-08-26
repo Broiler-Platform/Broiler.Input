@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Broiler.Input.Mouse.Windows</RootNamespace>
+    <AssemblyName>Broiler.Input.Mouse.Windows</AssemblyName>
+    <PackageId>Broiler.Input.Mouse.Windows</PackageId>
+    <Description>Windows mouse input provider and message translator for Broiler.</Description>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Configurations>Debug;Release;Debug-Windows;Release-Windows</Configurations>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Broiler.Input.Mouse\Broiler.Input.Mouse.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Windows\Broiler.Input.Windows.csproj" />
+  </ItemGroup>
+
+</Project>

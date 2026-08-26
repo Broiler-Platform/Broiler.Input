@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Broiler.Input.Contract.Tests</RootNamespace>
+    <AssemblyName>Broiler.Input.Contract.Tests</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <Description>Package-free contract test runner for Broiler.Input.</Description>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Configurations>Debug;Release;Debug-Windows;Release-Windows</Configurations>
+    <RuntimeIdentifier Condition="'$(Configuration)' == 'Debug-Windows' Or '$(Configuration)' == 'Release-Windows'">win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Broiler.Input\Broiler.Input.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Camera\Broiler.Input.Camera.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Camera.Windows\Broiler.Input.Camera.Windows.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Windows\Broiler.Input.Windows.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Keyboard\Broiler.Input.Keyboard.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Keyboard.Windows\Broiler.Input.Keyboard.Windows.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Legacy\Broiler.Input.Legacy.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Microphone\Broiler.Input.Microphone.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Microphone.Windows\Broiler.Input.Microphone.Windows.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Mouse\Broiler.Input.Mouse.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Mouse.Windows\Broiler.Input.Mouse.Windows.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Testing\Broiler.Input.Testing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\docs\api-baseline.txt" Link="api-baseline.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

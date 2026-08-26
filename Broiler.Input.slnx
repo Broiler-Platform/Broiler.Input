@@ -1,0 +1,198 @@
+﻿<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <BuildType Name="Debug-Linux" />
+    <BuildType Name="Release-Linux" />
+    <BuildType Name="Debug-Windows" />
+    <BuildType Name="Release-Windows" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="Broiler.Input.Camera/Broiler.Input.Camera.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Camera.Windows/Broiler.Input.Camera.Windows.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <Build Project="false" Solution="Debug|*" />
+      <Build Project="false" Solution="Release|*" />
+      <Build Project="false" Solution="Debug-Linux|*" />
+      <Build Project="false" Solution="Release-Linux|*" />
+    </Project>
+    <Project Path="Broiler.Input/Broiler.Input.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Linux.Diagnostic/Broiler.Input.Linux.Diagnostic.csproj">
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+      <Build Project="false" Solution="Debug|*" />
+      <Build Project="false" Solution="Release|*" />
+      <Build Project="false" Solution="Debug-Windows|*" />
+      <Build Project="false" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Linux/Broiler.Input.Linux.csproj">
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+      <Build Project="false" Solution="Debug|*" />
+      <Build Project="false" Solution="Release|*" />
+      <Build Project="false" Solution="Debug-Windows|*" />
+      <Build Project="false" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Windows/Broiler.Input.Windows.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <Build Project="false" Solution="Debug|*" />
+      <Build Project="false" Solution="Release|*" />
+      <Build Project="false" Solution="Debug-Linux|*" />
+      <Build Project="false" Solution="Release-Linux|*" />
+    </Project>
+    <Project Path="Broiler.Input.Keyboard/Broiler.Input.Keyboard.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Keyboard.Linux/Broiler.Input.Keyboard.Linux.csproj">
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+      <Build Project="false" Solution="Debug|*" />
+      <Build Project="false" Solution="Release|*" />
+      <Build Project="false" Solution="Debug-Windows|*" />
+      <Build Project="false" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Keyboard.Windows/Broiler.Input.Keyboard.Windows.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <Build Project="false" Solution="Debug|*" />
+      <Build Project="false" Solution="Release|*" />
+      <Build Project="false" Solution="Debug-Linux|*" />
+      <Build Project="false" Solution="Release-Linux|*" />
+    </Project>
+    <Project Path="Broiler.Input.Legacy/Broiler.Input.Legacy.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Microphone/Broiler.Input.Microphone.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Microphone.Windows/Broiler.Input.Microphone.Windows.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <Build Project="false" Solution="Debug|*" />
+      <Build Project="false" Solution="Release|*" />
+      <Build Project="false" Solution="Debug-Linux|*" />
+      <Build Project="false" Solution="Release-Linux|*" />
+    </Project>
+    <Project Path="Broiler.Input.Mouse/Broiler.Input.Mouse.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Mouse.Linux/Broiler.Input.Mouse.Linux.csproj">
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+      <Build Project="false" Solution="Debug|*" />
+      <Build Project="false" Solution="Release|*" />
+      <Build Project="false" Solution="Debug-Windows|*" />
+      <Build Project="false" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Mouse.Windows/Broiler.Input.Mouse.Windows.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <Build Project="false" Solution="Debug|*" />
+      <Build Project="false" Solution="Release|*" />
+      <Build Project="false" Solution="Debug-Linux|*" />
+      <Build Project="false" Solution="Release-Linux|*" />
+    </Project>
+    <Project Path="Broiler.Input.Pen/Broiler.Input.Pen.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Text/Broiler.Input.Text.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Android/Broiler.Input.Android.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Keyboard.Android/Broiler.Input.Keyboard.Android.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Pen.Android/Broiler.Input.Pen.Android.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Text.Android/Broiler.Input.Text.Android.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Touch.Android/Broiler.Input.Touch.Android.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Touch/Broiler.Input.Touch.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="Broiler.Input.Testing/Broiler.Input.Testing.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Contract.Tests/Broiler.Input.Contract.Tests.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <Build Project="false" Solution="Debug|*" />
+      <Build Project="false" Solution="Release|*" />
+      <Build Project="false" Solution="Debug-Linux|*" />
+      <Build Project="false" Solution="Release-Linux|*" />
+    </Project>
+    <Project Path="Broiler.Input.Android.Tests/Broiler.Input.Android.Tests.csproj">
+      <BuildType Project="Debug" Solution="Debug-Linux|*" />
+      <BuildType Project="Release" Solution="Release-Linux|*" />
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+    </Project>
+    <Project Path="Broiler.Input.Linux.Tests/Broiler.Input.Linux.Tests.csproj">
+      <BuildType Project="Debug" Solution="Debug-Windows|*" />
+      <BuildType Project="Release" Solution="Release-Windows|*" />
+      <Build Project="false" Solution="Debug|*" />
+      <Build Project="false" Solution="Release|*" />
+      <Build Project="false" Solution="Debug-Windows|*" />
+      <Build Project="false" Solution="Release-Windows|*" />
+    </Project>
+  </Folder>
+</Solution>
