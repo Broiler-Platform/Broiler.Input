@@ -364,10 +364,10 @@ internal interface IMFMediaSource
     int Shutdown();
 }
 
-[GeneratedComInterface]
+[ComImport]
 [Guid("44AE0FA8-EA31-4109-8D2E-4CAE4997C555")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal partial interface IMFMediaType : IMFAttributes
+internal interface IMFMediaType : IMFAttributes
 {
     [PreserveSig]
     int GetMajorType(out Guid majorType);
