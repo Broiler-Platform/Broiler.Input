@@ -230,10 +230,10 @@ internal struct WaveFormatExtensible
     public Guid SubFormat;
 }
 
-[GeneratedComInterface]
+[ComImport]
 [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal partial interface IMMDeviceEnumerator
+internal interface IMMDeviceEnumerator
 {
     [PreserveSig]
     int EnumAudioEndpoints(EDataFlow dataFlow, DeviceState stateMask, out IMMDeviceCollection devices);
@@ -251,10 +251,10 @@ internal partial interface IMMDeviceEnumerator
     int UnregisterEndpointNotificationCallback(IMMNotificationClient client);
 }
 
-[GeneratedComInterface]
+[ComImport]
 [Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal partial interface IMMDeviceCollection
+internal interface IMMDeviceCollection
 {
     [PreserveSig]
     int GetCount(out uint count);
@@ -285,10 +285,10 @@ internal interface IMMDevice
     int GetState(out DeviceState state);
 }
 
-[GeneratedComInterface]
+[ComImport]
 [Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal partial interface IPropertyStore
+internal interface IPropertyStore
 {
     [PreserveSig]
     int GetCount(out uint propertyCount);
@@ -306,10 +306,10 @@ internal partial interface IPropertyStore
     int Commit();
 }
 
-[GeneratedComInterface]
+[ComImport]
 [Guid("7991EEC9-7E89-4D85-8390-6C703CEC60C0")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal partial interface IMMNotificationClient
+internal interface IMMNotificationClient
 {
     [PreserveSig]
     int OnDeviceStateChanged([MarshalAs(UnmanagedType.LPWStr)] string deviceId, DeviceState newState);
@@ -370,10 +370,10 @@ internal interface IAudioClient
     int GetService(ref Guid interfaceId, [MarshalAs(UnmanagedType.IUnknown)] out object? serviceInterface);
 }
 
-[GeneratedComInterface]
+[ComImport]
 [Guid("C8ADBD64-E71E-48A0-A4DE-185C395CD317")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal partial interface IAudioCaptureClient
+internal interface IAudioCaptureClient
 {
     [PreserveSig]
     int GetBuffer(out IntPtr data, out uint framesToRead, out AudioClientBufferFlags flags, 
