@@ -16,24 +16,13 @@ namespace Broiler.Input.Touch.Android;
 /// down, because Android's pointer <em>index</em> is only a position within one event and shifts
 /// whenever a finger lifts.
 /// </remarks>
-public sealed class AndroidTouchInputDevice : TouchInputDevice, IAndroidInputDevice
+public sealed class AndroidTouchInputDevice(InputDeviceDescriptor descriptor, AndroidCoordinateSpace coordinateSpace,
+    AndroidUptimeInputClock clock, TouchOpenOptions? options = null) : TouchInputDevice(descriptor, clock), IAndroidInputDevice
 {
-    private readonly AndroidCoordinateSpace _coordinateSpace;
-    private readonly AndroidUptimeInputClock _clock;
-    private readonly TouchOpenOptions _options;
+    private readonly AndroidCoordinateSpace _coordinateSpace = coordinateSpace ?? throw new ArgumentNullException(nameof(coordinateSpace));
+    private readonly AndroidUptimeInputClock _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+    private readonly TouchOpenOptions _options = options ?? new TouchOpenOptions();
     private readonly HashSet<int> _activeContacts = [];
-
-    public AndroidTouchInputDevice(
-        InputDeviceDescriptor descriptor,
-        AndroidCoordinateSpace coordinateSpace,
-        AndroidUptimeInputClock clock,
-        TouchOpenOptions? options = null)
-        : base(descriptor, clock)
-    {
-        _coordinateSpace = coordinateSpace ?? throw new ArgumentNullException(nameof(coordinateSpace));
-        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
-        _options = options ?? new TouchOpenOptions();
-    }
 
     /// <summary>The pointer ids currently in contact with the screen.</summary>
     public IReadOnlyCollection<int> ActiveContacts => _activeContacts;
@@ -93,9 +82,7 @@ public sealed class AndroidTouchInputDevice : TouchInputDevice, IAndroidInputDev
         if (!_options.CancelContactsOnCaptureLoss || _activeContacts.Count == 0)
             return false;
 
-        EmitDiagnostic(
-            InputDiagnosticLevel.Information,
-            "input.touch.capture-lost",
+        EmitDiagnostic(InputDiagnosticLevel.Information, "input.touch.capture-lost",
             new Dictionary<string, string>
             {
                 ["reason"] = reason,
@@ -186,13 +173,9 @@ public sealed class AndroidTouchInputDevice : TouchInputDevice, IAndroidInputDev
 
         foreach (int pointerId in contacts)
         {
-            RaiseContactChanged(new TouchContactEvent(
-                NextEventHeader(timestamp),
-                pointerId,
-                InputPoint.ClientDeviceIndependentPixels(0, 0),
-                TouchContactState.Cancelled,
-                0,
-                InputEventSource.Raw));
+            RaiseContactChanged(new TouchContactEvent(NextEventHeader(timestamp), pointerId,
+                InputPoint.ClientDeviceIndependentPixels(0, 0), TouchContactState.Cancelled,
+                0, InputEventSource.Raw));
         }
 
         return true;
@@ -200,17 +183,13 @@ public sealed class AndroidTouchInputDevice : TouchInputDevice, IAndroidInputDev
 
     private void Raise(AndroidMotionSample sample, AndroidPointerSample pointer, TouchContactState state)
     {
-        RaiseContactChanged(new TouchContactEvent(
-            NextEventHeader(sample.Timestamp),
-            pointer.PointerId,
-            _coordinateSpace.ToInputPoint(pointer.X, pointer.Y),
-            state,
+        RaiseContactChanged(new TouchContactEvent(NextEventHeader(sample.Timestamp), pointer.PointerId,
+            _coordinateSpace.ToInputPoint(pointer.X, pointer.Y), state,
             _options.ReportPressure ? ClampPressure(pointer.Pressure) : 0,
             InputEventSource.Raw));
     }
 
     // Android documents getPressure as "normally" 0..1 but allows values above 1 on devices with a
     // wider calibrated range, so the value is clamped rather than trusted.
-    private static double ClampPressure(float pressure) =>
-        !float.IsFinite(pressure) ? 0 : Math.Clamp(pressure, 0f, 1f);
+    private static double ClampPressure(float pressure) => !float.IsFinite(pressure) ? 0 : Math.Clamp(pressure, 0f, 1f);
 }

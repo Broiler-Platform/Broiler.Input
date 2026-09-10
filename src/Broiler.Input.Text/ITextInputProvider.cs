@@ -4,6 +4,4 @@ namespace Broiler.Input.Text;
 /// Discovers and opens text/IME devices, mirroring
 /// <c>Broiler.Input.Keyboard.IKeyboardInputProvider</c>.
 /// </summary>
-public interface ITextInputProvider : IInputProvider<TextInputDevice, TextInputOpenOptions>
-{
-}
+public interface ITextInputProvider : IInputProvider<TextInputDevice, TextInputOpenOptions> { }

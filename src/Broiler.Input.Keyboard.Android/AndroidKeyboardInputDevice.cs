@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Broiler.Input.Android;
+using System.Globalization;
 
 namespace Broiler.Input.Keyboard.Android;
 
@@ -14,21 +15,12 @@ namespace Broiler.Input.Keyboard.Android;
 /// <c>InputConnection</c> without ever synthesizing a key event. A host wires both and lets each
 /// own its half.
 /// </remarks>
-public sealed class AndroidKeyboardInputDevice : KeyboardInputDevice, IAndroidInputDevice
+public sealed class AndroidKeyboardInputDevice(InputDeviceDescriptor descriptor, AndroidUptimeInputClock clock,
+    KeyboardOpenOptions? options = null) : KeyboardInputDevice(descriptor, clock), IAndroidInputDevice
 {
-    private readonly AndroidUptimeInputClock _clock;
-    private readonly KeyboardOpenOptions _options;
+    private readonly AndroidUptimeInputClock _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+    private readonly KeyboardOpenOptions _options = options ?? new KeyboardOpenOptions();
     private readonly HashSet<int> _downKeys = [];
-
-    public AndroidKeyboardInputDevice(
-        InputDeviceDescriptor descriptor,
-        AndroidUptimeInputClock clock,
-        KeyboardOpenOptions? options = null)
-        : base(descriptor, clock)
-    {
-        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
-        _options = options ?? new KeyboardOpenOptions();
-    }
 
     /// <summary>The Android key codes currently held down.</summary>
     public IReadOnlyCollection<int> DownKeys => _downKeys;
@@ -76,11 +68,9 @@ public sealed class AndroidKeyboardInputDevice : KeyboardInputDevice, IAndroidIn
         if (!CanDeliverInput)
             return false;
 
-        RaiseTextInput(new KeyboardTextEvent(
-            NextEventHeader(AndroidUptimeInputClock.FromUptimeMilliseconds(eventTimeMilliseconds)),
-            characters,
-            IsSystemText: false,
-            InputEventSource.Raw));
+        RaiseTextInput(new KeyboardTextEvent(NextEventHeader(AndroidUptimeInputClock.FromUptimeMilliseconds(eventTimeMilliseconds)),
+            characters, IsSystemText: false, InputEventSource.Raw));
+
         return true;
     }
 
@@ -95,13 +85,11 @@ public sealed class AndroidKeyboardInputDevice : KeyboardInputDevice, IAndroidIn
         if (_downKeys.Count == 0)
             return false;
 
-        EmitDiagnostic(
-            InputDiagnosticLevel.Information,
-            "input.keyboard.release-held",
+        EmitDiagnostic(InputDiagnosticLevel.Information, "input.keyboard.release-held",
             new Dictionary<string, string>
             {
                 ["reason"] = reason,
-                ["keys"] = _downKeys.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["keys"] = _downKeys.Count.ToString(CultureInfo.InvariantCulture),
             });
 
         int[] held = [.. _downKeys];
@@ -109,18 +97,9 @@ public sealed class AndroidKeyboardInputDevice : KeyboardInputDevice, IAndroidIn
 
         foreach (int keyCode in held)
         {
-            RaiseKeyChanged(new KeyboardKeyEvent(
-                NextEventHeader(_clock.GetTimestamp()),
-                AndroidKeyboardKeyMap.ToKeyboardKey(keyCode),
-                KeyboardKeyTransition.Up,
-                KeyboardModifierState.None,
-                keyCode,
-                0,
-                0,
-                AndroidKeyboardKeyMap.IsExtendedKey(keyCode),
-                WasDown: true,
-                AndroidKeyboardKeyMap.ToKeyLocation(keyCode),
-                InputEventSource.Synthetic));
+            RaiseKeyChanged(new KeyboardKeyEvent(NextEventHeader(_clock.GetTimestamp()), AndroidKeyboardKeyMap.ToKeyboardKey(keyCode),
+                KeyboardKeyTransition.Up, KeyboardModifierState.None, keyCode, 0, 0, AndroidKeyboardKeyMap.IsExtendedKey(keyCode),
+                WasDown: true, AndroidKeyboardKeyMap.ToKeyLocation(keyCode), InputEventSource.Synthetic));
         }
 
         return true;
@@ -143,24 +122,16 @@ public sealed class AndroidKeyboardInputDevice : KeyboardInputDevice, IAndroidIn
     private bool ProcessTransition(in AndroidKeyEventSample sample, KeyboardKeyTransition transition)
     {
         bool wasDown = _downKeys.Contains(sample.KeyCode);
+
         if (transition == KeyboardKeyTransition.Down)
             _downKeys.Add(sample.KeyCode);
         else
             _downKeys.Remove(sample.KeyCode);
 
-        RaiseKeyChanged(new KeyboardKeyEvent(
-            NextEventHeader(AndroidUptimeInputClock.FromUptimeMilliseconds(sample.EventTimeMilliseconds)),
-            AndroidKeyboardKeyMap.ToKeyboardKey(sample.KeyCode),
-            transition,
-            AndroidModifierTranslation.FromMetaState(sample.MetaState),
-            sample.KeyCode,
-            sample.ScanCode,
-            sample.RepeatCount + 1,
-            AndroidKeyboardKeyMap.IsExtendedKey(sample.KeyCode),
-            wasDown,
-            AndroidKeyboardKeyMap.ToKeyLocation(sample.KeyCode),
-            InputEventSource.Raw,
-            sample.IsSystemKey));
+        RaiseKeyChanged(new KeyboardKeyEvent(NextEventHeader(AndroidUptimeInputClock.FromUptimeMilliseconds(sample.EventTimeMilliseconds)),
+            AndroidKeyboardKeyMap.ToKeyboardKey(sample.KeyCode), transition, AndroidModifierTranslation.FromMetaState(sample.MetaState),
+            sample.KeyCode, sample.ScanCode, sample.RepeatCount + 1, AndroidKeyboardKeyMap.IsExtendedKey(sample.KeyCode), wasDown,
+            AndroidKeyboardKeyMap.ToKeyLocation(sample.KeyCode), InputEventSource.Raw, sample.IsSystemKey));
 
         if (transition == KeyboardKeyTransition.Down)
             RaiseTextForKey(sample);
@@ -195,11 +166,8 @@ public sealed class AndroidKeyboardInputDevice : KeyboardInputDevice, IAndroidIn
         if (text is null)
             return;
 
-        RaiseTextInput(new KeyboardTextEvent(
-            NextEventHeader(AndroidUptimeInputClock.FromUptimeMilliseconds(sample.EventTimeMilliseconds)),
-            text,
-            sample.IsSystemKey,
-            InputEventSource.Raw));
+        RaiseTextInput(new KeyboardTextEvent(NextEventHeader(AndroidUptimeInputClock.FromUptimeMilliseconds(sample.EventTimeMilliseconds)),
+            text, sample.IsSystemKey, InputEventSource.Raw));
     }
 
     /// <summary>
@@ -223,6 +191,5 @@ public sealed class AndroidKeyboardInputDevice : KeyboardInputDevice, IAndroidIn
         return char.ConvertFromUtf32(unicodeChar);
     }
 
-    private static bool IsValidUnicodeScalar(int value) =>
-        value >= 0 && value <= 0x10FFFF && (value < 0xD800 || value > 0xDFFF);
+    private static bool IsValidUnicodeScalar(int value) => value >= 0 && value <= 0x10FFFF && (value < 0xD800 || value > 0xDFFF);
 }

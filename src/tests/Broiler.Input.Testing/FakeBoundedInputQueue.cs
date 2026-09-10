@@ -3,26 +3,16 @@ using System.Collections.Generic;
 
 namespace Broiler.Input.Testing;
 
-public sealed class FakeBoundedInputQueue<T>
+public sealed class FakeBoundedInputQueue<T>(InputDeliveryOptions options)
 {
     private readonly Queue<T> _queue = new();
-    private readonly InputDeliveryOptions _options;
+    private readonly InputDeliveryOptions _options = options ?? throw new ArgumentNullException(nameof(options));
     private long _enqueuedCount;
     private long _dequeuedCount;
     private long _droppedNewestCount;
     private long _droppedOldestCount;
 
-    public FakeBoundedInputQueue(InputDeliveryOptions options)
-    {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-    }
-
-    public InputDeliveryMetrics Metrics => new(
-        _enqueuedCount,
-        _dequeuedCount,
-        _droppedNewestCount,
-        _droppedOldestCount,
-        _queue.Count);
+    public InputDeliveryMetrics Metrics => new(_enqueuedCount, _dequeuedCount, _droppedNewestCount, _droppedOldestCount, _queue.Count);
 
     public bool TryEnqueue(T item)
     {

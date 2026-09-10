@@ -23,11 +23,5 @@ namespace Broiler.Input.Android;
 /// <param name="TiltRadians">
 /// <c>AXIS_TILT</c>. The angle between the stylus and the surface normal, 0 when perpendicular.
 /// </param>
-public readonly record struct AndroidPointerSample(
-    int PointerId,
-    float X,
-    float Y,
-    float Pressure = 0f,
-    int ToolType = AndroidMotionEventConstants.ToolTypeFinger,
-    float OrientationRadians = 0f,
-    float TiltRadians = 0f);
+public readonly record struct AndroidPointerSample(int PointerId, float X, float Y, float Pressure = 0f,
+    int ToolType = AndroidMotionEventConstants.ToolTypeFinger, float OrientationRadians = 0f, float TiltRadians = 0f);

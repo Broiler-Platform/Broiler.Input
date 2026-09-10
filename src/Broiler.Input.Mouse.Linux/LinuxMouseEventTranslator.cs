@@ -32,17 +32,13 @@ public readonly record struct LinuxAbsAxis(int Minimum = 0, int Maximum = 0, int
     private const double FullTraversalPixels = 1600.0;
     private const double DefaultScale = 0.5;
 
-    public double PixelScale =>
-        Resolution > 0
+    public double PixelScale => Resolution > 0
             ? PixelsPerMillimeter / Resolution
             : (Maximum > Minimum ? FullTraversalPixels / (Maximum - Minimum) : DefaultScale);
 }
 
-public readonly record struct LinuxMouseTranslatedEvent(
-    LinuxMouseTranslatedEventKind Kind,
-    MouseMoveEvent? Move = null,
-    MouseButtonEvent? Button = null,
-    MouseWheelEvent? Wheel = null)
+public readonly record struct LinuxMouseTranslatedEvent(LinuxMouseTranslatedEventKind Kind,
+    MouseMoveEvent? Move = null, MouseButtonEvent? Button = null, MouseWheelEvent? Wheel = null)
 {
     public static LinuxMouseTranslatedEvent FromMove(MouseMoveEvent inputEvent) =>
         new(LinuxMouseTranslatedEventKind.Move, Move: inputEvent);
@@ -54,16 +50,11 @@ public readonly record struct LinuxMouseTranslatedEvent(
         new(LinuxMouseTranslatedEventKind.Wheel, Wheel: inputEvent);
 }
 
-public sealed class LinuxMouseEventTranslator
+public sealed class LinuxMouseEventTranslator(LinuxPointerMotionMode mode, LinuxAbsAxis absXAxis, LinuxAbsAxis absYAxis)
 {
     // Tap-to-click thresholds: a brief, near-stationary contact is a left click.
     private const long TapMaxDurationMicroseconds = 180_000;
     private const double TapMaxMovementPixels = 8.0;
-
-    private readonly LinuxPointerMotionMode _mode;
-    private readonly LinuxAbsAxis _absXAxis;
-    private readonly LinuxAbsAxis _absYAxis;
-
     private int _pendingX;
     private int _pendingY;
     private int _pendingVerticalWheel;
@@ -87,23 +78,10 @@ public sealed class LinuxMouseEventTranslator
     private double _touchMovementPixels;
     private bool _physicalButtonDuringTouch;
 
-    public LinuxMouseEventTranslator()
-        : this(LinuxPointerMotionMode.Relative, default, default)
-    {
-    }
+    public LinuxMouseEventTranslator() : this(LinuxPointerMotionMode.Relative, default, default) { }
 
-    public LinuxMouseEventTranslator(LinuxPointerMotionMode mode, LinuxAbsAxis absXAxis, LinuxAbsAxis absYAxis)
-    {
-        _mode = mode;
-        _absXAxis = absXAxis;
-        _absYAxis = absYAxis;
-    }
-
-    public void Process(
-        in LinuxInputEvent inputEvent,
-        Func<InputTimestamp, InputEventHeader> createHeader,
-        MouseOpenOptions options,
-        ICollection<LinuxMouseTranslatedEvent> output)
+    public void Process(in LinuxInputEvent inputEvent, Func<InputTimestamp, InputEventHeader> createHeader,
+        MouseOpenOptions options, ICollection<LinuxMouseTranslatedEvent> output)
     {
         ArgumentNullException.ThrowIfNull(createHeader);
         ArgumentNullException.ThrowIfNull(options);
@@ -124,7 +102,7 @@ public sealed class LinuxMouseEventTranslator
                 break;
 
             case LinuxEvdevConstants.EvSyn when inputEvent.Code == LinuxEvdevConstants.SynReport:
-                if (_mode == LinuxPointerMotionMode.AbsoluteTouchpad)
+                if (mode == LinuxPointerMotionMode.AbsoluteTouchpad)
                     AccumulateTouchpadMotion();
                 Flush(inputEvent.Timestamp, createHeader, options, output);
                 break;
@@ -185,8 +163,8 @@ public sealed class LinuxMouseEventTranslator
 
         if (_haveLastAbs)
         {
-            double dxPixels = ((_absX - _lastAbsX) * _absXAxis.PixelScale) + _carryX;
-            double dyPixels = ((_absY - _lastAbsY) * _absYAxis.PixelScale) + _carryY;
+            double dxPixels = ((_absX - _lastAbsX) * absXAxis.PixelScale) + _carryX;
+            double dyPixels = ((_absY - _lastAbsY) * absYAxis.PixelScale) + _carryY;
 
             int dx = (int)Math.Truncate(dxPixels);
             int dy = (int)Math.Truncate(dyPixels);
@@ -203,8 +181,7 @@ public sealed class LinuxMouseEventTranslator
         _haveLastAbs = true;
     }
 
-    private void ProcessButton(
-        in LinuxInputEvent inputEvent,
+    private void ProcessButton(in LinuxInputEvent inputEvent,
         Func<InputTimestamp, InputEventHeader> createHeader,
         ICollection<LinuxMouseTranslatedEvent> output)
     {
@@ -236,18 +213,11 @@ public sealed class LinuxMouseEventTranslator
             _buttons &= ~flag;
         }
 
-        output.Add(LinuxMouseTranslatedEvent.FromButton(new MouseButtonEvent(
-            createHeader(inputEvent.Timestamp),
-            RawPoint(0, 0),
-            _buttons,
-            button,
-            transition,
-            InputEventSource.Raw)));
+        output.Add(LinuxMouseTranslatedEvent.FromButton(new MouseButtonEvent(createHeader(inputEvent.Timestamp),
+            RawPoint(0, 0), _buttons, button, transition, InputEventSource.Raw)));
     }
 
-    private void HandleTouchContact(
-        in LinuxInputEvent inputEvent,
-        Func<InputTimestamp, InputEventHeader> createHeader,
+    private void HandleTouchContact(in LinuxInputEvent inputEvent, Func<InputTimestamp, InputEventHeader> createHeader,
         ICollection<LinuxMouseTranslatedEvent> output)
     {
         if (inputEvent.Value == 1)
@@ -263,8 +233,7 @@ public sealed class LinuxMouseEventTranslator
         }
 
         // Contact released: emit a synthetic left click for a brief, still tap.
-        bool wasTap =
-            !_physicalButtonDuringTouch &&
+        bool wasTap = !_physicalButtonDuringTouch &&
             _touchMovementPixels <= TapMaxMovementPixels &&
             (inputEvent.Timestamp.Ticks - _touchStartMicroseconds) <= TapMaxDurationMicroseconds;
 
@@ -275,43 +244,25 @@ public sealed class LinuxMouseEventTranslator
             EmitClick(inputEvent.Timestamp, createHeader, output);
     }
 
-    private void EmitClick(
-        InputTimestamp timestamp,
-        Func<InputTimestamp, InputEventHeader> createHeader,
+    private void EmitClick(InputTimestamp timestamp, Func<InputTimestamp, InputEventHeader> createHeader,
         ICollection<LinuxMouseTranslatedEvent> output)
     {
         _buttons |= MouseButtons.Left;
-        output.Add(LinuxMouseTranslatedEvent.FromButton(new MouseButtonEvent(
-            createHeader(timestamp),
-            RawPoint(0, 0),
-            _buttons,
-            MouseButton.Left,
-            MouseButtonTransition.Down,
-            InputEventSource.Raw)));
+        output.Add(LinuxMouseTranslatedEvent.FromButton(new MouseButtonEvent(createHeader(timestamp),
+            RawPoint(0, 0), _buttons, MouseButton.Left, MouseButtonTransition.Down, InputEventSource.Raw)));
 
         _buttons &= ~MouseButtons.Left;
-        output.Add(LinuxMouseTranslatedEvent.FromButton(new MouseButtonEvent(
-            createHeader(timestamp),
-            RawPoint(0, 0),
-            _buttons,
-            MouseButton.Left,
-            MouseButtonTransition.Up,
-            InputEventSource.Raw)));
+        output.Add(LinuxMouseTranslatedEvent.FromButton(new MouseButtonEvent(createHeader(timestamp),
+            RawPoint(0, 0), _buttons, MouseButton.Left, MouseButtonTransition.Up, InputEventSource.Raw)));
     }
 
-    private void Flush(
-        InputTimestamp timestamp,
-        Func<InputTimestamp, InputEventHeader> createHeader,
-        MouseOpenOptions options,
-        ICollection<LinuxMouseTranslatedEvent> output)
+    private void Flush(InputTimestamp timestamp, Func<InputTimestamp, InputEventHeader> createHeader,
+        MouseOpenOptions options, ICollection<LinuxMouseTranslatedEvent> output)
     {
         if (options.ReceiveMovement && (_pendingX != 0 || _pendingY != 0))
         {
-            output.Add(LinuxMouseTranslatedEvent.FromMove(new MouseMoveEvent(
-                createHeader(timestamp),
-                RawPoint(_pendingX, _pendingY),
-                _buttons,
-                InputEventSource.Raw)));
+            output.Add(LinuxMouseTranslatedEvent.FromMove(new MouseMoveEvent(createHeader(timestamp),
+                RawPoint(_pendingX, _pendingY), _buttons, InputEventSource.Raw)));
         }
 
         if (options.ReceiveWheel)
@@ -325,24 +276,14 @@ public sealed class LinuxMouseEventTranslator
 
             if (verticalNotches != 0)
             {
-                output.Add(LinuxMouseTranslatedEvent.FromWheel(new MouseWheelEvent(
-                    createHeader(timestamp),
-                    RawPoint(0, 0),
-                    _buttons,
-                    MouseWheelAxis.Vertical,
-                    verticalNotches,
-                    InputEventSource.Raw)));
+                output.Add(LinuxMouseTranslatedEvent.FromWheel(new MouseWheelEvent(createHeader(timestamp),
+                    RawPoint(0, 0), _buttons, MouseWheelAxis.Vertical, verticalNotches, InputEventSource.Raw)));
             }
 
             if (horizontalNotches != 0)
             {
-                output.Add(LinuxMouseTranslatedEvent.FromWheel(new MouseWheelEvent(
-                    createHeader(timestamp),
-                    RawPoint(0, 0),
-                    _buttons,
-                    MouseWheelAxis.Horizontal,
-                    horizontalNotches,
-                    InputEventSource.Raw)));
+                output.Add(LinuxMouseTranslatedEvent.FromWheel(new MouseWheelEvent(createHeader(timestamp),
+                    RawPoint(0, 0), _buttons, MouseWheelAxis.Horizontal, horizontalNotches, InputEventSource.Raw)));
             }
         }
 

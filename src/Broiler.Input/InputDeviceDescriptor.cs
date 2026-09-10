@@ -8,10 +8,7 @@ public sealed class InputDeviceDescriptor
 {
     private readonly InputCapability[] _capabilities;
 
-    public InputDeviceDescriptor(
-        InputDeviceId id,
-        InputKind kind,
-        string displayName,
+    public InputDeviceDescriptor(InputDeviceId id,InputKind kind,string displayName,
         InputDeviceAvailability availability = InputDeviceAvailability.Available,
         IEnumerable<InputCapability>? capabilities = null)
     {

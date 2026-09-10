@@ -4,8 +4,7 @@ namespace Broiler.Input.Keyboard;
 
 public abstract class KeyboardInputDevice : InputDevice
 {
-    protected KeyboardInputDevice(InputDeviceDescriptor descriptor, IInputClock? clock = null)
-        : base(descriptor, clock)
+    protected KeyboardInputDevice(InputDeviceDescriptor descriptor, IInputClock? clock = null) : base(descriptor, clock)
     {
         if (descriptor.Kind != InputKind.Keyboard)
             throw new ArgumentException("Keyboard devices require a keyboard descriptor.", nameof(descriptor));

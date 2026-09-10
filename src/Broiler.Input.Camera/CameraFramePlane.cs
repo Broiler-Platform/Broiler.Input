@@ -8,6 +8,7 @@ public readonly record struct CameraFramePlane
     {
         if (offset < 0)
             throw new ArgumentOutOfRangeException(nameof(offset), "Plane offset must not be negative.");
+
         if (length < 0)
             throw new ArgumentOutOfRangeException(nameof(length), "Plane length must not be negative.");
 

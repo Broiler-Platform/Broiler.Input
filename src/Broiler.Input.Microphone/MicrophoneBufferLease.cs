@@ -1,5 +1,4 @@
 using System;
-using Broiler.Input;
 
 namespace Broiler.Input.Microphone;
 
@@ -7,12 +6,8 @@ public sealed class MicrophoneBufferLease : IDisposable
 {
     private byte[]? _buffer;
 
-    public MicrophoneBufferLease(
-        byte[] buffer,
-        MicrophoneFormat format,
-        InputTimestamp timestamp,
-        long devicePosition,
-        MicrophoneBufferFlags flags)
+    public MicrophoneBufferLease(byte[] buffer, MicrophoneFormat format, InputTimestamp timestamp, 
+        long devicePosition, MicrophoneBufferFlags flags)
     {
         _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
         Format = format ?? throw new ArgumentNullException(nameof(format));
@@ -27,8 +22,7 @@ public sealed class MicrophoneBufferLease : IDisposable
             : TimeSpan.FromSeconds((double)FrameCount / format.SampleRate);
     }
 
-    public ReadOnlyMemory<byte> Memory =>
-        _buffer ?? throw new ObjectDisposedException(nameof(MicrophoneBufferLease));
+    public ReadOnlyMemory<byte> Memory => _buffer ?? throw new ObjectDisposedException(nameof(MicrophoneBufferLease));
 
     public MicrophoneFormat Format { get; }
 
@@ -44,8 +38,5 @@ public sealed class MicrophoneBufferLease : IDisposable
 
     public bool IsDisposed => _buffer is null;
 
-    public void Dispose()
-    {
-        _buffer = null;
-    }
+    public void Dispose() => _buffer = null;
 }

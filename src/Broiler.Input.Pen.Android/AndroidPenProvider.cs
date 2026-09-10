@@ -6,19 +6,10 @@ namespace Broiler.Input.Pen.Android;
 /// <summary>
 /// Opens <see cref="AndroidPenInputDevice"/> instances for stylus devices the host has registered.
 /// </summary>
-public sealed class AndroidPenProvider :
-    AndroidInputProvider<PenInputDevice, PenOpenOptions>,
-    IPenInputProvider
+public sealed class AndroidPenProvider(AndroidCoordinateSpace? coordinateSpace = null, AndroidUptimeInputClock? clock = null) :
+    AndroidInputProvider<PenInputDevice, PenOpenOptions>(clock), IPenInputProvider
 {
-    private readonly AndroidCoordinateSpace _coordinateSpace;
-
-    public AndroidPenProvider(
-        AndroidCoordinateSpace? coordinateSpace = null,
-        AndroidUptimeInputClock? clock = null)
-        : base(clock)
-    {
-        _coordinateSpace = coordinateSpace ?? new AndroidCoordinateSpace();
-    }
+    private readonly AndroidCoordinateSpace _coordinateSpace = coordinateSpace ?? new AndroidCoordinateSpace();
 
     /// <summary>The display density used to convert event coordinates.</summary>
     public AndroidCoordinateSpace CoordinateSpace => _coordinateSpace;
@@ -30,9 +21,7 @@ public sealed class AndroidPenProvider :
     /// </summary>
     public InputDeviceDescriptor RegisterDefaultStylus(bool supportsTilt = false, bool supportsEraser = false)
     {
-        InputDeviceDescriptor descriptor = AndroidInputDescriptors.Pen(
-            supportsTilt: supportsTilt,
-            supportsEraser: supportsEraser);
+        InputDeviceDescriptor descriptor = AndroidInputDescriptors.Pen(supportsTilt: supportsTilt, supportsEraser: supportsEraser);
         RegisterDevice(descriptor);
         return descriptor;
     }

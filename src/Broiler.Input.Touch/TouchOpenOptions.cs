@@ -13,6 +13,4 @@ namespace Broiler.Input.Touch;
 /// device loses capture. Leaving it enabled is what keeps a backgrounded application from being
 /// left with a contact that never lifts.
 /// </param>
-public sealed record TouchOpenOptions(
-    bool ReportPressure = true,
-    bool CancelContactsOnCaptureLoss = true);
+public sealed record TouchOpenOptions(bool ReportPressure = true, bool CancelContactsOnCaptureLoss = true);

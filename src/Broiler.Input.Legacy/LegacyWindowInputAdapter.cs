@@ -103,41 +103,24 @@ public sealed class LegacyWindowInputAdapter : IDisposable
             KeyUp?.Invoke(legacyEvent);
     }
 
-    private void OnTextInput(KeyboardTextEvent inputEvent)
-    {
-        TextInput?.Invoke(new LegacyTextInputEvent(inputEvent.Text));
-    }
+    private void OnTextInput(KeyboardTextEvent inputEvent) => TextInput?.Invoke(new LegacyTextInputEvent(inputEvent.Text));
 
-    private void OnMouseMoved(MouseMoveEvent inputEvent)
-    {
-        PointerMove?.Invoke(new LegacyPointerEvent(inputEvent.Position, inputEvent.Buttons));
-    }
+    private void OnMouseMoved(MouseMoveEvent inputEvent) => PointerMove?.Invoke(new LegacyPointerEvent(inputEvent.Position, inputEvent.Buttons));
 
     private void OnMouseButtonChanged(MouseButtonEvent inputEvent)
     {
         LegacyPointerEvent legacyEvent = new(inputEvent.Position, inputEvent.Buttons, inputEvent.Button);
+
         if (inputEvent.Transition == MouseButtonTransition.Down)
             PointerDown?.Invoke(legacyEvent);
         else
             PointerUp?.Invoke(legacyEvent);
     }
 
-    private void OnMouseWheelChanged(MouseWheelEvent inputEvent)
-    {
-        MouseWheel?.Invoke(new LegacyMouseWheelEvent(
-            inputEvent.Position,
-            inputEvent.DeltaNotches,
-            inputEvent.Buttons,
-            inputEvent.Axis));
-    }
+    private void OnMouseWheelChanged(MouseWheelEvent inputEvent) => MouseWheel?.Invoke(
+        new LegacyMouseWheelEvent(inputEvent.Position, inputEvent.DeltaNotches, inputEvent.Buttons, inputEvent.Axis));
 
-    private void OnMouseLeft(MouseLeaveEvent inputEvent)
-    {
-        PointerLeave?.Invoke();
-    }
+    private void OnMouseLeft(MouseLeaveEvent inputEvent) => PointerLeave?.Invoke();
 
-    private void OnMouseCaptureLost(MouseCaptureLostEvent inputEvent)
-    {
-        PointerCaptureLost?.Invoke();
-    }
+    private void OnMouseCaptureLost(MouseCaptureLostEvent inputEvent) => PointerCaptureLost?.Invoke();
 }

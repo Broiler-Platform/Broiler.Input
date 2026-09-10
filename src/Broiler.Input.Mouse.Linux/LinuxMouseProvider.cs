@@ -7,38 +7,33 @@ using Broiler.Input.Linux;
 
 namespace Broiler.Input.Mouse.Linux;
 
-public sealed class LinuxMouseProvider : IMouseInputProvider, IInputDeviceWatcher
+public sealed class LinuxMouseProvider(LinuxEvdevProviderOptions? options = null, IInputClock? clock = null) :
+    IMouseInputProvider, IInputDeviceWatcher
 {
-    private readonly LinuxEvdevProviderOptions _options;
-    private readonly IInputClock _clock;
+    private readonly LinuxEvdevProviderOptions _options = (options ?? new LinuxEvdevProviderOptions()).Normalize();
+    private readonly IInputClock _clock = clock ?? StopwatchInputClock.Shared;
     private readonly Dictionary<InputDeviceId, LinuxEvdevDeviceInfo> _devices = [];
-
-    public LinuxMouseProvider(LinuxEvdevProviderOptions? options = null, IInputClock? clock = null)
-    {
-        _options = (options ?? new LinuxEvdevProviderOptions()).Normalize();
-        _clock = clock ?? StopwatchInputClock.Shared;
-    }
 
     public event Action<InputDeviceChange>? DeviceChanged;
 
-    public static LinuxInputDependencyReport CheckDependencies(
-        string inputDirectory = LinuxEventDeviceAccessProbe.DefaultInputDirectory) =>
+    public static LinuxInputDependencyReport CheckDependencies(string inputDirectory = LinuxEventDeviceAccessProbe.DefaultInputDirectory) =>
         LinuxInputDependencies.CheckBaseline(inputDirectory);
 
-    public ValueTask<IReadOnlyList<InputDeviceDescriptor>> GetDevicesAsync(
-        CancellationToken cancellationToken = default)
+    public ValueTask<IReadOnlyList<InputDeviceDescriptor>> GetDevicesAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
         IReadOnlyList<LinuxEvdevDeviceInfo> devices = LinuxEvdevDeviceDiscovery.Discover(LinuxEvdevDeviceKind.Mouse, _options);
         ReplaceCache(devices);
-        return ValueTask.FromResult<IReadOnlyList<InputDeviceDescriptor>>(devices.Select(static device => device.Descriptor).ToArray());
+
+        return ValueTask.FromResult<IReadOnlyList<InputDeviceDescriptor>>([.. devices.Select(static device => device.Descriptor)]);
     }
 
     public async ValueTask RefreshDevicesAsync(CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<InputDeviceId> previous = _devices.Keys.ToArray();
+        IReadOnlyList<InputDeviceId> previous = [.. _devices.Keys];
         IReadOnlyList<InputDeviceDescriptor> current = await GetDevicesAsync(cancellationToken).ConfigureAwait(false);
-        HashSet<InputDeviceId> currentIds = current.Select(static descriptor => descriptor.Id).ToHashSet();
+        HashSet<InputDeviceId> currentIds = [.. current.Select(static descriptor => descriptor.Id)];
 
         foreach (InputDeviceDescriptor descriptor in current)
         {
@@ -50,18 +45,20 @@ public sealed class LinuxMouseProvider : IMouseInputProvider, IInputDeviceWatche
 
         foreach (InputDeviceId removed in previous)
         {
-            if (!currentIds.Contains(removed))
-                DeviceChanged?.Invoke(new InputDeviceChange(InputDeviceChangeKind.Removed, new InputDeviceDescriptor(removed, InputKind.Mouse, removed.Value, InputDeviceAvailability.Removed), _clock.GetTimestamp()));
+            if (currentIds.Contains(removed))
+                continue;
+
+            var inputDeviceDescriptor = new InputDeviceDescriptor(removed, InputKind.Mouse, removed.Value, InputDeviceAvailability.Removed);
+            DeviceChanged?.Invoke(new InputDeviceChange(InputDeviceChangeKind.Removed, inputDeviceDescriptor, _clock.GetTimestamp()));
         }
     }
 
-    public async ValueTask<MouseInputDevice> OpenAsync(
-        InputDeviceDescriptor descriptor,
-        MouseOpenOptions options,
-        CancellationToken cancellationToken = default)
+    public async ValueTask<MouseInputDevice> OpenAsync(InputDeviceDescriptor descriptor, 
+        MouseOpenOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         ArgumentNullException.ThrowIfNull(options);
+        
         cancellationToken.ThrowIfCancellationRequested();
 
         _options.ValidateRawAccess();

@@ -1,8 +1,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Broiler.Input;
-using Broiler.Input.Camera;
 using Broiler.Input.Windows;
 
 namespace Broiler.Input.Camera.Windows;
@@ -11,33 +9,26 @@ public sealed class WindowsCameraInputDevice : CameraInputDevice
 {
     private readonly WindowsCameraCaptureSession _captureSession;
 
-    public WindowsCameraInputDevice(
-        InputDeviceDescriptor descriptor,
-        CameraOpenOptions options,
-        IInputClock? clock = null,
-        IInputDiagnosticSink? diagnostics = null)
-        : base(descriptor, clock ?? WindowsInputClock.Shared, diagnostics)
+    public WindowsCameraInputDevice(InputDeviceDescriptor descriptor, CameraOpenOptions options, IInputClock? clock = null,
+        IInputDiagnosticSink? diagnostics = null) : base(descriptor, clock ?? WindowsInputClock.Shared, diagnostics)
     {
-        _captureSession = new WindowsCameraCaptureSession(
-            descriptor,
-            options ?? throw new ArgumentNullException(nameof(options)),
-            RaiseCapturedFrame,
-            HandleCaptureInvalidated,
-            SetNegotiatedFormat,
-            SetCaptureStatistics,
-            clock ?? WindowsInputClock.Shared,
-            diagnostics);
+        _captureSession = new WindowsCameraCaptureSession(descriptor, options ?? throw new ArgumentNullException(nameof(options)),
+            RaiseCapturedFrame, HandleCaptureInvalidated, SetNegotiatedFormat, SetCaptureStatistics,
+            clock ?? WindowsInputClock.Shared, diagnostics);
     }
 
     public override async ValueTask StartAsync(CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
+
         if (State == InputDeviceState.Running)
             return;
+
         if (State is InputDeviceState.Discovered or InputDeviceState.Closed)
             throw new InvalidOperationException("The input device must be open before it can be started.");
 
         TransitionCaptureTo(CameraCaptureState.Starting);
+
         try
         {
             await _captureSession.StartAsync(cancellationToken).ConfigureAwait(false);
@@ -47,10 +38,12 @@ public sealed class WindowsCameraInputDevice : CameraInputDevice
         catch (InputCameraException exception)
         {
             InputFault fault = exception.Fault;
+            
             if (fault.Category == InputErrorCategory.DeviceRemoved)
                 MarkCaptureInvalidated(fault);
             else
                 MarkCaptureFaulted(fault);
+            
             throw;
         }
     }
@@ -58,6 +51,7 @@ public sealed class WindowsCameraInputDevice : CameraInputDevice
     public override async ValueTask StopAsync(CancellationToken cancellationToken = default)
     {
         ThrowIfDisposed();
+        
         if (State != InputDeviceState.Running && CaptureState != CameraCaptureState.Running)
             return;
 
@@ -96,8 +90,5 @@ public sealed class WindowsCameraInputDevice : CameraInputDevice
             frame.Dispose();
     }
 
-    private void HandleCaptureInvalidated(InputFault fault)
-    {
-        MarkCaptureInvalidated(fault);
-    }
+    private void HandleCaptureInvalidated(InputFault fault) => MarkCaptureInvalidated(fault);
 }

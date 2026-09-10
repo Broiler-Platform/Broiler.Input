@@ -34,6 +34,6 @@ public static class AndroidInputSource
     public static bool IsStylus(int source) => Matches(source, Stylus) || Matches(source, BluetoothStylus);
 
     /// <summary>Returns true for mouse, relative-mouse, and touchpad sources.</summary>
-    public static bool IsMouseLike(int source) =>
+    public static bool IsMouseLike(int source) => 
         Matches(source, Mouse) || Matches(source, MouseRelative) || Matches(source, Touchpad);
 }

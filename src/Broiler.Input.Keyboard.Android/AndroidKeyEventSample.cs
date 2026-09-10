@@ -1,3 +1,5 @@
+using Broiler.Input.Android;
+
 namespace Broiler.Input.Keyboard.Android;
 
 /// <summary>
@@ -32,13 +34,6 @@ namespace Broiler.Input.Keyboard.Android;
 /// <c>KeyEvent.isSystem()</c>. Set for keys the platform owns — Back, Home, volume — which a host
 /// must not silently swallow.
 /// </param>
-public readonly record struct AndroidKeyEventSample(
-    int Action,
-    int KeyCode,
-    int ScanCode = 0,
-    int MetaState = 0,
-    int RepeatCount = 0,
-    int UnicodeChar = 0,
-    long EventTimeMilliseconds = 0,
-    int Source = Broiler.Input.Android.AndroidInputSource.Keyboard,
-    bool IsSystemKey = false);
+public readonly record struct AndroidKeyEventSample(int Action, int KeyCode, int ScanCode = 0,
+    int MetaState = 0, int RepeatCount = 0, int UnicodeChar = 0, long EventTimeMilliseconds = 0,
+    int Source = AndroidInputSource.Keyboard, bool IsSystemKey = false);

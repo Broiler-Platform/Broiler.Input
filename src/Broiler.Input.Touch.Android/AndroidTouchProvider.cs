@@ -6,19 +6,10 @@ namespace Broiler.Input.Touch.Android;
 /// <summary>
 /// Opens <see cref="AndroidTouchInputDevice"/> instances for touch devices the host has registered.
 /// </summary>
-public sealed class AndroidTouchProvider :
-    AndroidInputProvider<TouchInputDevice, TouchOpenOptions>,
-    ITouchInputProvider
+public sealed class AndroidTouchProvider(AndroidCoordinateSpace? coordinateSpace = null, AndroidUptimeInputClock? clock = null) :
+    AndroidInputProvider<TouchInputDevice, TouchOpenOptions>(clock), ITouchInputProvider
 {
-    private readonly AndroidCoordinateSpace _coordinateSpace;
-
-    public AndroidTouchProvider(
-        AndroidCoordinateSpace? coordinateSpace = null,
-        AndroidUptimeInputClock? clock = null)
-        : base(clock)
-    {
-        _coordinateSpace = coordinateSpace ?? new AndroidCoordinateSpace();
-    }
+    private readonly AndroidCoordinateSpace _coordinateSpace = coordinateSpace ?? new AndroidCoordinateSpace();
 
     /// <summary>The display density used to convert event coordinates. Update it on configuration change.</summary>
     public AndroidCoordinateSpace CoordinateSpace => _coordinateSpace;

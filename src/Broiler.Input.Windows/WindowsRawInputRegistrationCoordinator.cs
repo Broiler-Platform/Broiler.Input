@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Threading;
 
 namespace Broiler.Input.Windows;
 
@@ -18,25 +19,17 @@ public sealed class WindowsRawInputRegistrationCoordinator
     private const uint RidevInputSink = 0x00000100;
     private const uint RidevDevNotify = 0x00002000;
 
-    private readonly object _gate = new();
+    private readonly Lock _gate = new();
     private readonly Dictionary<RegistrationKey, WindowsRawInputRegistrationLease> _leases = [];
 
-    public WindowsRawInputRegistrationLease RegisterKeyboard(
-        IntPtr targetWindow,
-        WindowsRawInputRegistrationOptions? options = null) =>
+    public WindowsRawInputRegistrationLease RegisterKeyboard(IntPtr targetWindow, WindowsRawInputRegistrationOptions? options = null) =>
         Register(WindowsRawInputDeviceKind.Keyboard, GenericDesktopUsagePage, KeyboardUsage, targetWindow, options);
 
-    public WindowsRawInputRegistrationLease RegisterMouse(
-        IntPtr targetWindow,
-        WindowsRawInputRegistrationOptions? options = null) =>
+    public WindowsRawInputRegistrationLease RegisterMouse(IntPtr targetWindow, WindowsRawInputRegistrationOptions? options = null) =>
         Register(WindowsRawInputDeviceKind.Mouse, GenericDesktopUsagePage, MouseUsage, targetWindow, options);
 
-    private WindowsRawInputRegistrationLease Register(
-        WindowsRawInputDeviceKind kind,
-        ushort usagePage,
-        ushort usage,
-        IntPtr targetWindow,
-        WindowsRawInputRegistrationOptions? options)
+    private WindowsRawInputRegistrationLease Register(WindowsRawInputDeviceKind kind, ushort usagePage,
+        ushort usage, IntPtr targetWindow, WindowsRawInputRegistrationOptions? options)
     {
         WindowsRawInputRegistrationOptions effectiveOptions = options ?? new WindowsRawInputRegistrationOptions();
         effectiveOptions.Validate(targetWindow);
@@ -49,10 +42,13 @@ public sealed class WindowsRawInputRegistrationCoordinator
                 throw new InvalidOperationException($"Raw Input {kind} is already registered for this process.");
 
             uint flags = 0;
+
             if (effectiveOptions.ReceiveInputWhenNotFocused)
                 flags |= RidevInputSink;
+
             if (effectiveOptions.SuppressLegacyMessages)
                 flags |= RidevNoLegacy;
+
             if (effectiveOptions.ObserveDeviceChanges)
                 flags |= RidevDevNotify;
 
@@ -86,34 +82,22 @@ public sealed class WindowsRawInputRegistrationCoordinator
         }
     }
 
-    private static void RegisterNative(
-        ushort usagePage,
-        ushort usage,
-        uint flags,
-        IntPtr targetWindow,
-        string message)
+    private static void RegisterNative(ushort usagePage, ushort usage, uint flags, IntPtr targetWindow, string message)
     {
         if (!TryRegisterNative(usagePage, usage, flags, targetWindow, out int error))
             throw new Win32Exception(error, message);
     }
 
-    private static bool TryRegisterNative(
-        ushort usagePage,
-        ushort usage,
-        uint flags,
-        IntPtr targetWindow,
-        out int error)
+    private static bool TryRegisterNative(ushort usagePage, ushort usage, uint flags, IntPtr targetWindow, out int error)
     {
-        RawInputDevice[] devices =
-        [
+        RawInputDevice[] devices = [
             new RawInputDevice
             {
                 UsagePage = usagePage,
                 Usage = usage,
                 Flags = flags,
                 TargetWindow = targetWindow,
-            },
-        ];
+            }];
 
         bool registered = RegisterRawInputDevices(devices, (uint)devices.Length, (uint)Marshal.SizeOf<RawInputDevice>());
         error = registered ? 0 : Marshal.GetLastWin32Error();
@@ -133,8 +117,5 @@ public sealed class WindowsRawInputRegistrationCoordinator
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool RegisterRawInputDevices(
-        [In] RawInputDevice[] rawInputDevices,
-        uint deviceCount,
-        uint rawInputDeviceSize);
+    private static extern bool RegisterRawInputDevices([In] RawInputDevice[] rawInputDevices, uint deviceCount, uint rawInputDeviceSize);
 }

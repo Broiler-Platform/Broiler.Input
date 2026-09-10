@@ -5,24 +5,13 @@ using System.Linq;
 
 namespace Broiler.Input.Linux;
 
-public sealed class LinuxEvdevCapabilitySet
+public sealed class LinuxEvdevCapabilitySet(IEnumerable<int>? eventTypes = null, IEnumerable<int>? keyCodes = null, 
+    IEnumerable<int>? relativeAxes = null, IEnumerable<int>? absoluteAxes = null)
 {
-    private readonly HashSet<int> _eventTypes;
-    private readonly HashSet<int> _keyCodes;
-    private readonly HashSet<int> _relativeAxes;
-    private readonly HashSet<int> _absoluteAxes;
-
-    public LinuxEvdevCapabilitySet(
-        IEnumerable<int>? eventTypes = null,
-        IEnumerable<int>? keyCodes = null,
-        IEnumerable<int>? relativeAxes = null,
-        IEnumerable<int>? absoluteAxes = null)
-    {
-        _eventTypes = [.. eventTypes ?? []];
-        _keyCodes = [.. keyCodes ?? []];
-        _relativeAxes = [.. relativeAxes ?? []];
-        _absoluteAxes = [.. absoluteAxes ?? []];
-    }
+    private readonly HashSet<int> _eventTypes = [.. eventTypes ?? []];
+    private readonly HashSet<int> _keyCodes = [.. keyCodes ?? []];
+    private readonly HashSet<int> _relativeAxes = [.. relativeAxes ?? []];
+    private readonly HashSet<int> _absoluteAxes = [.. absoluteAxes ?? []];
 
     public static LinuxEvdevCapabilitySet Empty { get; } = new();
 
@@ -42,8 +31,7 @@ public sealed class LinuxEvdevCapabilitySet
 
     public bool HasAbsoluteAxis(int axis) => _absoluteAxes.Contains(axis);
 
-    public bool IsKeyboard =>
-        HasEventType(LinuxEvdevConstants.EvKey) &&
+    public bool IsKeyboard => HasEventType(LinuxEvdevConstants.EvKey) &&
         _keyCodes.Any(static code => code is >= LinuxEvdevConstants.KeyEsc and < LinuxEvdevConstants.BtnMisc);
 
     public bool IsMouse =>
@@ -77,9 +65,11 @@ public sealed class LinuxEvdevCapabilitySet
         string[] words = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         List<int> bits = [];
         int wordIndex = 0;
+
         for (int i = words.Length - 1; i >= 0; i--, wordIndex++)
         {
             string word = words[i].Trim();
+            
             if (word.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                 word = word[2..];
 
@@ -99,7 +89,7 @@ public sealed class LinuxEvdevCapabilitySet
 
     private static IReadOnlyList<int> Sorted(HashSet<int> values)
     {
-        int[] sorted = values.ToArray();
+        int[] sorted = [.. values];
         Array.Sort(sorted);
         return sorted;
     }

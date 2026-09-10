@@ -18,27 +18,20 @@ public sealed class FakeCameraInputDevice : CameraInputDevice
     private long _discontinuousCount;
     private long _frameNumber;
 
-    public FakeCameraInputDevice(
-        InputDeviceDescriptor descriptor,
-        CameraOpenOptions options,
-        ManualInputClock clock,
-        IInputDiagnosticSink? diagnostics = null)
-        : base(descriptor, clock, diagnostics)
+    public FakeCameraInputDevice(InputDeviceDescriptor descriptor, CameraOpenOptions options, ManualInputClock clock,
+        IInputDiagnosticSink? diagnostics = null) : base(descriptor, clock, diagnostics)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         if (_options.PreferredFormat is not null)
             SetNegotiatedFormat(_options.PreferredFormat);
     }
 
-    public bool TryCapture(
-        byte[] bytes,
-        CameraFormat format,
-        IReadOnlyList<CameraFramePlane>? planes = null,
-        CameraFrameFlags flags = CameraFrameFlags.None,
-        CameraRotation rotation = CameraRotation.None,
+    public bool TryCapture(byte[] bytes, CameraFormat format, IReadOnlyList<CameraFramePlane>? planes = null,
+        CameraFrameFlags flags = CameraFrameFlags.None, CameraRotation rotation = CameraRotation.None,
         CameraColorSpace colorSpace = CameraColorSpace.Unknown)
     {
         ThrowIfDisposed();
+
         ArgumentNullException.ThrowIfNull(bytes);
         ArgumentNullException.ThrowIfNull(format);
 
@@ -51,18 +44,12 @@ public sealed class FakeCameraInputDevice : CameraInputDevice
 
         if ((flags & CameraFrameFlags.Discontinuous) != 0)
             _discontinuousCount++;
+
         if ((flags & CameraFrameFlags.FormatChanged) != 0)
             _formatChangedCount++;
 
-        CameraFrameLease lease = new(
-            bytes,
-            format,
-            planes ?? [new CameraFramePlane(0, bytes.Length, 0, format.Width, format.Height)],
-            Clock.GetTimestamp(),
-            _frameNumber++,
-            flags,
-            rotation,
-            colorSpace);
+        CameraFrameLease lease = new(bytes, format, planes ?? [new CameraFramePlane(0, bytes.Length, 0, format.Width, format.Height)],
+            Clock.GetTimestamp(), _frameNumber++, flags, rotation, colorSpace);
 
         _capturedCount++;
         bool accepted = TryEnqueue(lease);
@@ -94,10 +81,7 @@ public sealed class FakeCameraInputDevice : CameraInputDevice
         return true;
     }
 
-    public void SimulateInvalidation()
-    {
-        MarkCaptureInvalidated(new InputFault(InputErrorCategory.DeviceRemoved, "Fake camera source was invalidated."));
-    }
+    public void SimulateInvalidation() => MarkCaptureInvalidated(new InputFault(InputErrorCategory.DeviceRemoved, "Fake camera source was invalidated."));
 
     public override async ValueTask OpenAsync(CancellationToken cancellationToken = default)
     {
@@ -180,14 +164,8 @@ public sealed class FakeCameraInputDevice : CameraInputDevice
 
     private void PublishStatistics()
     {
-        SetCaptureStatistics(new CameraCaptureStatistics(
-            _capturedCount,
-            _deliveredCount,
-            _droppedNewestCount,
-            _droppedOldestCount,
-            _formatChangedCount,
-            _discontinuousCount,
-            _queue.Count));
+        SetCaptureStatistics(new CameraCaptureStatistics(_capturedCount, _deliveredCount, _droppedNewestCount,
+            _droppedOldestCount, _formatChangedCount, _discontinuousCount, _queue.Count));
     }
 
     private void ManualAdvance()

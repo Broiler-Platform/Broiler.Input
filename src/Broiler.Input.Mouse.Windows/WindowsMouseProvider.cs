@@ -8,18 +8,15 @@ using Broiler.Input.Windows;
 
 namespace Broiler.Input.Mouse.Windows;
 
-public sealed class WindowsMouseProvider : IMouseInputProvider, IInputDeviceWatcher, IWindowsInputMessageSink
+public sealed class WindowsMouseProvider(IInputClock? clock = null) : IMouseInputProvider, IInputDeviceWatcher, IWindowsInputMessageSink
 {
     private const int RawInputDeviceArrival = 1;
     private const int RawInputDeviceRemoval = 2;
 
     private const uint TmeLeave = 0x00000002;
 
-    private static readonly InputDeviceDescriptor s_descriptor = new(
-        InputDeviceId.FromOpaqueValue("windows:mouse:semantic-message-source"),
-        InputKind.Mouse,
-        "Windows mouse message source",
-        InputDeviceAvailability.Available,
+    private static readonly InputDeviceDescriptor s_descriptor = new(InputDeviceId.FromOpaqueValue("windows:mouse:semantic-message-source"),
+        InputKind.Mouse, "Windows mouse message source", InputDeviceAvailability.Available,
         [
             new InputCapability("delivery", "semantic-window-messages"),
             new InputCapability("raw-input-registration", "explicit-lease"),
@@ -28,12 +25,7 @@ public sealed class WindowsMouseProvider : IMouseInputProvider, IInputDeviceWatc
             new InputCapability("hot-plug", "WM_INPUT_DEVICE_CHANGE"),
         ]);
 
-    private readonly IInputClock _clock;
-
-    public WindowsMouseProvider(IInputClock? clock = null)
-    {
-        _clock = clock ?? WindowsInputClock.Shared;
-    }
+    private readonly IInputClock _clock = clock ?? WindowsInputClock.Shared;
 
     public event Action<InputDeviceChange>? DeviceChanged;
 
@@ -49,16 +41,13 @@ public sealed class WindowsMouseProvider : IMouseInputProvider, IInputDeviceWatc
         return false;
     }
 
-    public ValueTask<IReadOnlyList<InputDeviceDescriptor>> GetDevicesAsync(
-        CancellationToken cancellationToken = default)
+    public ValueTask<IReadOnlyList<InputDeviceDescriptor>> GetDevicesAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return ValueTask.FromResult<IReadOnlyList<InputDeviceDescriptor>>([s_descriptor]);
     }
 
-    public async ValueTask<MouseInputDevice> OpenAsync(
-        InputDeviceDescriptor descriptor,
-        MouseOpenOptions options,
+    public async ValueTask<MouseInputDevice> OpenAsync(InputDeviceDescriptor descriptor,MouseOpenOptions options,
         CancellationToken cancellationToken = default)
     {
         WindowsMouseInputDevice device = CreateDevice(descriptor, options);
@@ -66,8 +55,7 @@ public sealed class WindowsMouseProvider : IMouseInputProvider, IInputDeviceWatc
         return device;
     }
 
-    public async ValueTask<WindowsMouseInputDevice> OpenDefaultAsync(
-        MouseOpenOptions? options = null,
+    public async ValueTask<WindowsMouseInputDevice> OpenDefaultAsync(MouseOpenOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         WindowsMouseInputDevice device = CreateDevice(s_descriptor, options ?? new MouseOpenOptions());
@@ -75,10 +63,8 @@ public sealed class WindowsMouseProvider : IMouseInputProvider, IInputDeviceWatc
         return device;
     }
 
-    public WindowsRawInputRegistrationLease RegisterRawInput(
-        IntPtr targetWindow,
-        WindowsRawInputRegistrationCoordinator coordinator,
-        WindowsRawInputRegistrationOptions? options = null)
+    public static WindowsRawInputRegistrationLease RegisterRawInput(IntPtr targetWindow,
+        WindowsRawInputRegistrationCoordinator coordinator,WindowsRawInputRegistrationOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(coordinator);
         return coordinator.RegisterMouse(targetWindow, options);

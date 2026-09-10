@@ -1,15 +1,8 @@
 using System;
-using Broiler.Input;
 
 namespace Broiler.Input.Camera.Windows;
 
-public sealed class InputCameraException : InvalidOperationException
+public sealed class InputCameraException(InputFault fault) : InvalidOperationException(fault?.Message, fault?.Exception)
 {
-    public InputCameraException(InputFault fault)
-        : base(fault?.Message, fault?.Exception)
-    {
-        Fault = fault ?? throw new ArgumentNullException(nameof(fault));
-    }
-
-    public InputFault Fault { get; }
+    public InputFault Fault { get; } = fault ?? throw new ArgumentNullException(nameof(fault));
 }

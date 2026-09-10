@@ -6,14 +6,9 @@ namespace Broiler.Input.Keyboard.Android;
 /// <summary>
 /// Opens <see cref="AndroidKeyboardInputDevice"/> instances for keyboards the host has registered.
 /// </summary>
-public sealed class AndroidKeyboardProvider :
-    AndroidInputProvider<KeyboardInputDevice, KeyboardOpenOptions>,
-    IKeyboardInputProvider
+public sealed class AndroidKeyboardProvider(AndroidUptimeInputClock? clock = null) :
+    AndroidInputProvider<KeyboardInputDevice, KeyboardOpenOptions>(clock), IKeyboardInputProvider
 {
-    public AndroidKeyboardProvider(AndroidUptimeInputClock? clock = null)
-        : base(clock)
-    {
-    }
 
     /// <summary>
     /// Registers the logical keyboard that carries virtual keys from the soft keyboard and any
@@ -24,6 +19,7 @@ public sealed class AndroidKeyboardProvider :
     {
         InputDeviceDescriptor descriptor = AndroidInputDescriptors.Keyboard();
         RegisterDevice(descriptor);
+        
         return descriptor;
     }
 

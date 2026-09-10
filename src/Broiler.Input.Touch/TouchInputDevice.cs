@@ -4,8 +4,7 @@ namespace Broiler.Input.Touch;
 
 public abstract class TouchInputDevice : InputDevice
 {
-    protected TouchInputDevice(InputDeviceDescriptor descriptor, IInputClock? clock = null)
-        : base(descriptor, clock)
+    protected TouchInputDevice(InputDeviceDescriptor descriptor, IInputClock? clock = null) : base(descriptor, clock)
     {
         if (descriptor.Kind != InputKind.Touch)
             throw new ArgumentException("Touch devices require a touch descriptor.", nameof(descriptor));

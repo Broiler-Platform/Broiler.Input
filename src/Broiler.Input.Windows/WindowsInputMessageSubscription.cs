@@ -8,10 +8,7 @@ public sealed class WindowsInputMessageSubscription : IDisposable
     private readonly Action _dispose;
     private int _disposed;
 
-    internal WindowsInputMessageSubscription(Action dispose)
-    {
-        _dispose = dispose ?? throw new ArgumentNullException(nameof(dispose));
-    }
+    internal WindowsInputMessageSubscription(Action dispose) => _dispose = dispose ?? throw new ArgumentNullException(nameof(dispose));
 
     public void Dispose()
     {

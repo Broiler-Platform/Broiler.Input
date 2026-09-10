@@ -4,9 +4,7 @@ namespace Broiler.Input.Camera;
 
 public sealed record CameraOpenOptions
 {
-    public CameraOpenOptions(
-        CameraFormat? preferredFormat = null,
-        CameraSessionOptions? sessionOptions = null)
+    public CameraOpenOptions(CameraFormat? preferredFormat = null, CameraSessionOptions? sessionOptions = null)
     {
         PreferredFormat = preferredFormat;
         SessionOptions = sessionOptions ?? CameraSessionOptions.PreviewDefault;

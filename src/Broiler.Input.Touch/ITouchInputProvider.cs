@@ -4,6 +4,4 @@ namespace Broiler.Input.Touch;
 /// Discovers and opens touch devices, mirroring
 /// <c>Broiler.Input.Keyboard.IKeyboardInputProvider</c>.
 /// </summary>
-public interface ITouchInputProvider : IInputProvider<TouchInputDevice, TouchOpenOptions>
-{
-}
+public interface ITouchInputProvider : IInputProvider<TouchInputDevice, TouchOpenOptions> { }

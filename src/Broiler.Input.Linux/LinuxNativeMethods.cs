@@ -28,18 +28,13 @@ internal static class LinuxNativeMethods
     private const int CLOCK_MONOTONIC = 1;
 
     [DllImport("libc", EntryPoint = "open", SetLastError = true)]
-    public static extern int Open(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string pathname,
-        int flags);
+    public static extern int Open([MarshalAs(UnmanagedType.LPUTF8Str)] string pathname, int flags);
 
     [DllImport("libc", EntryPoint = "read", SetLastError = true)]
     public static extern nint Read(int fd, byte[] buffer, nuint count);
 
     [DllImport("libc", EntryPoint = "poll", SetLastError = true)]
-    public static extern int Poll(
-        [In, Out] PollFd[] fds,
-        nuint nfds,
-        int timeout);
+    public static extern int Poll([In, Out] PollFd[] fds, nuint nfds, int timeout);
 
     [DllImport("libc", EntryPoint = "ioctl", SetLastError = true)]
     private static extern int IoctlClockId(int fd, nuint request, ref int clockId);
@@ -71,13 +66,13 @@ internal static class LinuxNativeMethods
         minimum = BinaryPrimitives.ReadInt32LittleEndian(buffer.AsSpan(4, 4));
         maximum = BinaryPrimitives.ReadInt32LittleEndian(buffer.AsSpan(8, 4));
         resolution = BinaryPrimitives.ReadInt32LittleEndian(buffer.AsSpan(20, 4));
+
         return true;
     }
 
     // EVIOCGABS(abs) = _IOR('E', 0x40 + abs, struct input_absinfo)
     // _IOC(dir=2 read, type='E'=0x45, nr=0x40+abs, size=24).
-    private static nuint EviocgAbs(ushort abs) =>
-        (nuint)((2u << 30) | (24u << 16) | ((uint)'E' << 8) | (0x40u + abs));
+    private static nuint EviocgAbs(ushort abs) => (2u << 30) | (24u << 16) | ((uint)'E' << 8) | (0x40u + abs);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct PollFd

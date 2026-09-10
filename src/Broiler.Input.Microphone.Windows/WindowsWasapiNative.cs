@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace Broiler.Input.Microphone.Windows;
 
@@ -37,12 +38,8 @@ internal static class WindowsWasapiNative
     internal static extern void CoUninitialize();
 
     [DllImport("ole32.dll")]
-    internal static extern int CoCreateInstance(
-        ref Guid classId,
-        IntPtr outerUnknown,
-        uint classContext,
-        ref Guid interfaceId,
-        [MarshalAs(UnmanagedType.IUnknown)] out object? instance);
+    internal static extern int CoCreateInstance(ref Guid classId, IntPtr outerUnknown, uint classContext,
+        ref Guid interfaceId, [MarshalAs(UnmanagedType.IUnknown)] out object? instance);
 
     [DllImport("ole32.dll")]
     internal static extern void CoTaskMemFree(IntPtr value);
@@ -51,11 +48,8 @@ internal static class WindowsWasapiNative
     internal static extern int PropVariantClear(ref PropVariant value);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    internal static extern IntPtr CreateEventW(
-        IntPtr eventAttributes,
-        [MarshalAs(UnmanagedType.Bool)] bool manualReset,
-        [MarshalAs(UnmanagedType.Bool)] bool initialState,
-        string? name);
+    internal static extern IntPtr CreateEventW(IntPtr eventAttributes, [MarshalAs(UnmanagedType.Bool)] bool manualReset,
+        [MarshalAs(UnmanagedType.Bool)] bool initialState, string? name);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -73,16 +67,15 @@ internal sealed class WindowsComApartmentScope : IDisposable
 {
     private readonly bool _shouldUninitialize;
 
-    private WindowsComApartmentScope(bool shouldUninitialize)
-    {
-        _shouldUninitialize = shouldUninitialize;
-    }
+    private WindowsComApartmentScope(bool shouldUninitialize) => _shouldUninitialize = shouldUninitialize;
 
     public static WindowsComApartmentScope Enter()
     {
         int result = WindowsWasapiNative.CoInitializeEx(IntPtr.Zero, WindowsWasapiNative.COINIT_MULTITHREADED);
+
         if (result == WindowsWasapiNative.S_OK || result == WindowsWasapiNative.S_FALSE)
             return new WindowsComApartmentScope(shouldUninitialize: true);
+
         if (result == WindowsWasapiNative.RPC_E_CHANGED_MODE)
             return new WindowsComApartmentScope(shouldUninitialize: false);
 
@@ -98,27 +91,22 @@ internal sealed class WindowsComApartmentScope : IDisposable
 
 internal static class WindowsMicrophoneFaults
 {
-    public static InputMicrophoneException CreateException(int hresult, string message) =>
-        new(CreateFault(hresult, message));
+    public static InputMicrophoneException CreateException(int hresult, string message) => new(CreateFault(hresult, message));
 
-    public static Broiler.Input.InputFault CreateFault(int hresult, string message)
+    public static InputFault CreateFault(int hresult, string message)
     {
-        Broiler.Input.InputErrorCategory category = hresult switch
+        InputErrorCategory category = hresult switch
         {
-            WindowsWasapiNative.E_ACCESSDENIED => Broiler.Input.InputErrorCategory.PermissionDenied,
-            WindowsWasapiNative.AUDCLNT_E_DEVICE_IN_USE => Broiler.Input.InputErrorCategory.DeviceBusy,
-            WindowsWasapiNative.AUDCLNT_E_UNSUPPORTED_FORMAT => Broiler.Input.InputErrorCategory.UnsupportedCapability,
-            WindowsWasapiNative.AUDCLNT_E_DEVICE_INVALIDATED => Broiler.Input.InputErrorCategory.DeviceRemoved,
-            WindowsWasapiNative.E_NOTFOUND => Broiler.Input.InputErrorCategory.DeviceNotFound,
-            WindowsWasapiNative.AUDCLNT_E_SERVICE_NOT_RUNNING => Broiler.Input.InputErrorCategory.HostUnavailable,
-            _ => Broiler.Input.InputErrorCategory.NativeFailure,
+            WindowsWasapiNative.E_ACCESSDENIED => InputErrorCategory.PermissionDenied,
+            WindowsWasapiNative.AUDCLNT_E_DEVICE_IN_USE => InputErrorCategory.DeviceBusy,
+            WindowsWasapiNative.AUDCLNT_E_UNSUPPORTED_FORMAT => InputErrorCategory.UnsupportedCapability,
+            WindowsWasapiNative.AUDCLNT_E_DEVICE_INVALIDATED => InputErrorCategory.DeviceRemoved,
+            WindowsWasapiNative.E_NOTFOUND => InputErrorCategory.DeviceNotFound,
+            WindowsWasapiNative.AUDCLNT_E_SERVICE_NOT_RUNNING => InputErrorCategory.HostUnavailable,
+            _ => InputErrorCategory.NativeFailure,
         };
 
-        return new Broiler.Input.InputFault(
-            category,
-            FormatNativeFailureMessage(message, hresult),
-            nativeErrorCode: hresult,
-            nativeFacility: "WASAPI");
+        return new InputFault(category, FormatNativeFailureMessage(message, hresult), nativeErrorCode: hresult, nativeFacility: "WASAPI");
     }
 
     public static void ThrowIfFailed(int hresult, string message)
@@ -134,6 +122,7 @@ internal static class WindowsMicrophoneFaults
         string suffix = name is null
             ? "WASAPI HRESULT " + formattedCode
             : "WASAPI HRESULT " + formattedCode + " (" + name + ")";
+
         return message + " Native error: " + suffix + ".";
     }
 
@@ -203,17 +192,11 @@ internal enum AudioClientBufferFlags : uint
 }
 
 [StructLayout(LayoutKind.Sequential)]
-internal struct PropertyKey
+internal struct PropertyKey(Guid formatId, uint propertyId)
 {
-    public PropertyKey(Guid formatId, uint propertyId)
-    {
-        FormatId = formatId;
-        PropertyId = propertyId;
-    }
+    public Guid FormatId = formatId;
 
-    public Guid FormatId;
-
-    public uint PropertyId;
+    public uint PropertyId = propertyId;
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -247,10 +230,10 @@ internal struct WaveFormatExtensible
     public Guid SubFormat;
 }
 
-[ComImport]
+[GeneratedComInterface]
 [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IMMDeviceEnumerator
+internal partial interface IMMDeviceEnumerator
 {
     [PreserveSig]
     int EnumAudioEndpoints(EDataFlow dataFlow, DeviceState stateMask, out IMMDeviceCollection devices);
@@ -268,10 +251,10 @@ internal interface IMMDeviceEnumerator
     int UnregisterEndpointNotificationCallback(IMMNotificationClient client);
 }
 
-[ComImport]
+[GeneratedComInterface]
 [Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IMMDeviceCollection
+internal partial interface IMMDeviceCollection
 {
     [PreserveSig]
     int GetCount(out uint count);
@@ -302,10 +285,10 @@ internal interface IMMDevice
     int GetState(out DeviceState state);
 }
 
-[ComImport]
+[GeneratedComInterface]
 [Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IPropertyStore
+internal partial interface IPropertyStore
 {
     [PreserveSig]
     int GetCount(out uint propertyCount);
@@ -323,10 +306,10 @@ internal interface IPropertyStore
     int Commit();
 }
 
-[ComImport]
+[GeneratedComInterface]
 [Guid("7991EEC9-7E89-4D85-8390-6C703CEC60C0")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IMMNotificationClient
+internal partial interface IMMNotificationClient
 {
     [PreserveSig]
     int OnDeviceStateChanged([MarshalAs(UnmanagedType.LPWStr)] string deviceId, DeviceState newState);
@@ -350,13 +333,8 @@ internal interface IMMNotificationClient
 internal interface IAudioClient
 {
     [PreserveSig]
-    int Initialize(
-        AudioClientShareMode shareMode,
-        AudioClientStreamFlags streamFlags,
-        long bufferDuration,
-        long periodicity,
-        IntPtr format,
-        IntPtr audioSessionGuid);
+    int Initialize(AudioClientShareMode shareMode, AudioClientStreamFlags streamFlags, long bufferDuration,
+        long periodicity, IntPtr format, IntPtr audioSessionGuid);
 
     [PreserveSig]
     int GetBufferSize(out uint bufferFrameCount);
@@ -368,10 +346,7 @@ internal interface IAudioClient
     int GetCurrentPadding(out uint currentPaddingFrameCount);
 
     [PreserveSig]
-    int IsFormatSupported(
-        AudioClientShareMode shareMode,
-        IntPtr format,
-        out IntPtr closestMatch);
+    int IsFormatSupported(AudioClientShareMode shareMode, IntPtr format, out IntPtr closestMatch);
 
     [PreserveSig]
     int GetMixFormat(out IntPtr deviceFormat);
@@ -392,23 +367,17 @@ internal interface IAudioClient
     int SetEventHandle(IntPtr eventHandle);
 
     [PreserveSig]
-    int GetService(
-        ref Guid interfaceId,
-        [MarshalAs(UnmanagedType.IUnknown)] out object? serviceInterface);
+    int GetService(ref Guid interfaceId, [MarshalAs(UnmanagedType.IUnknown)] out object? serviceInterface);
 }
 
-[ComImport]
+[GeneratedComInterface]
 [Guid("C8ADBD64-E71E-48A0-A4DE-185C395CD317")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IAudioCaptureClient
+internal partial interface IAudioCaptureClient
 {
     [PreserveSig]
-    int GetBuffer(
-        out IntPtr data,
-        out uint framesToRead,
-        out AudioClientBufferFlags flags,
-        out ulong devicePosition,
-        out ulong qpcPosition);
+    int GetBuffer(out IntPtr data, out uint framesToRead, out AudioClientBufferFlags flags, 
+        out ulong devicePosition, out ulong qpcPosition);
 
     [PreserveSig]
     int ReleaseBuffer(uint framesRead);

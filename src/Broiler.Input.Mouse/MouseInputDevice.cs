@@ -4,8 +4,7 @@ namespace Broiler.Input.Mouse;
 
 public abstract class MouseInputDevice : InputDevice
 {
-    protected MouseInputDevice(InputDeviceDescriptor descriptor, IInputClock? clock = null)
-        : base(descriptor, clock)
+    protected MouseInputDevice(InputDeviceDescriptor descriptor, IInputClock? clock = null) : base(descriptor, clock)
     {
         if (descriptor.Kind != InputKind.Mouse)
             throw new ArgumentException("Mouse devices require a mouse descriptor.", nameof(descriptor));

@@ -1,15 +1,11 @@
 using System;
-using Broiler.Input;
 
 namespace Broiler.Input.Microphone;
 
 public sealed record MicrophoneSessionOptions
 {
-    public MicrophoneSessionOptions(
-        InputDeliveryOptions? deliveryOptions = null,
-        bool reportSilence = true,
-        bool reportDiscontinuities = true,
-        TimeSpan? requestedLatency = null)
+    public MicrophoneSessionOptions(InputDeliveryOptions? deliveryOptions = null, bool reportSilence = true, 
+        bool reportDiscontinuities = true, TimeSpan? requestedLatency = null)
     {
         DeliveryOptions = deliveryOptions ?? new InputDeliveryOptions(8, InputDeliveryOverflowPolicy.DropOldest);
         ReportSilence = reportSilence;

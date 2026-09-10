@@ -1,5 +1,3 @@
 namespace Broiler.Input.Keyboard;
 
-public interface IKeyboardInputProvider : IInputProvider<KeyboardInputDevice, KeyboardOpenOptions>
-{
-}
+public interface IKeyboardInputProvider : IInputProvider<KeyboardInputDevice, KeyboardOpenOptions> { }

@@ -18,10 +18,7 @@ public sealed class AndroidCoordinateSpace
 {
     private double _density = 1.0;
 
-    public AndroidCoordinateSpace(double density = 1.0)
-    {
-        Density = density;
-    }
+    public AndroidCoordinateSpace(double density = 1.0) => Density = density;
 
     /// <summary>
     /// <c>DisplayMetrics.density</c>. Values that are not finite and positive are rejected, because
@@ -40,8 +37,7 @@ public sealed class AndroidCoordinateSpace
     }
 
     /// <summary>Converts a physical-pixel position into a device-independent <see cref="InputPoint"/>.</summary>
-    public InputPoint ToInputPoint(double x, double y) =>
-        InputPoint.ClientDeviceIndependentPixels(x / _density, y / _density);
+    public InputPoint ToInputPoint(double x, double y) => InputPoint.ClientDeviceIndependentPixels(x / _density, y / _density);
 
     /// <summary>Converts a physical-pixel length into device-independent units.</summary>
     public double ToDeviceIndependent(double physicalPixels) => physicalPixels / _density;

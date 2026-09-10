@@ -1,17 +1,10 @@
 namespace Broiler.Input;
 
-public sealed class InputDeviceChange
+public sealed class InputDeviceChange(InputDeviceChangeKind kind, InputDeviceDescriptor descriptor, InputTimestamp timestamp)
 {
-    public InputDeviceChange(InputDeviceChangeKind kind, InputDeviceDescriptor descriptor, InputTimestamp timestamp)
-    {
-        Kind = kind;
-        Descriptor = descriptor;
-        Timestamp = timestamp;
-    }
+    public InputDeviceChangeKind Kind { get; } = kind;
 
-    public InputDeviceChangeKind Kind { get; }
+    public InputDeviceDescriptor Descriptor { get; } = descriptor;
 
-    public InputDeviceDescriptor Descriptor { get; }
-
-    public InputTimestamp Timestamp { get; }
+    public InputTimestamp Timestamp { get; } = timestamp;
 }

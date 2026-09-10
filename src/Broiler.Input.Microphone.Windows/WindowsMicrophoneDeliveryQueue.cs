@@ -1,19 +1,12 @@
 using System;
 using System.Collections.Generic;
-using Broiler.Input;
-using Broiler.Input.Microphone;
 
 namespace Broiler.Input.Microphone.Windows;
 
-internal sealed class WindowsMicrophoneDeliveryQueue
+internal sealed class WindowsMicrophoneDeliveryQueue(InputDeliveryOptions options)
 {
     private readonly Queue<MicrophoneBufferLease> _queue = new();
-    private readonly InputDeliveryOptions _options;
-
-    public WindowsMicrophoneDeliveryQueue(InputDeliveryOptions options)
-    {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-    }
+    private readonly InputDeliveryOptions _options = options ?? throw new ArgumentNullException(nameof(options));
 
     public long DroppedNewestCount { get; private set; }
 

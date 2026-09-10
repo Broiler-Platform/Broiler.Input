@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace Broiler.Input.Camera.Windows;
 
@@ -66,20 +67,13 @@ internal static class WindowsMediaFoundationNative
     internal static extern int MFCreateAttributes(out IMFAttributes attributes, uint initialSize);
 
     [DllImport("mf.dll", ExactSpelling = true)]
-    internal static extern int MFEnumDeviceSources(
-        IMFAttributes attributes,
-        out IntPtr devices,
-        out uint count);
+    internal static extern int MFEnumDeviceSources(IMFAttributes attributes, out IntPtr devices, out uint count);
 
     [DllImport("mf.dll", ExactSpelling = true)]
-    internal static extern int MFCreateDeviceSource(
-        IMFAttributes attributes,
-        out IMFMediaSource mediaSource);
+    internal static extern int MFCreateDeviceSource(IMFAttributes attributes, out IMFMediaSource mediaSource);
 
     [DllImport("mfreadwrite.dll", ExactSpelling = true)]
-    internal static extern int MFCreateSourceReaderFromMediaSource(
-        IMFMediaSource mediaSource,
-        IMFAttributes? attributes,
+    internal static extern int MFCreateSourceReaderFromMediaSource(IMFMediaSource mediaSource, IMFAttributes? attributes,
         out IMFSourceReader sourceReader);
 
     [DllImport("ole32.dll")]
@@ -101,6 +95,7 @@ internal sealed class MediaFoundationPlatformScope : IDisposable
     public MediaFoundationPlatformScope()
     {
         int comResult = WindowsMediaFoundationNative.CoInitializeEx(IntPtr.Zero, WindowsMediaFoundationNative.COINIT_MULTITHREADED);
+
         if (comResult == WindowsMediaFoundationNative.S_OK || comResult == WindowsMediaFoundationNative.S_FALSE)
             _shouldUninitializeCom = true;
         else if (comResult != WindowsMediaFoundationNative.RPC_E_CHANGED_MODE)
@@ -108,11 +103,10 @@ internal sealed class MediaFoundationPlatformScope : IDisposable
 
         try
         {
-            WindowsCameraFaults.ThrowIfFailed(
-                WindowsMediaFoundationNative.MFStartup(
-                    WindowsMediaFoundationNative.MF_VERSION,
-                    WindowsMediaFoundationNative.MFSTARTUP_NOSOCKET),
-                "Media Foundation startup failed.");
+            int result = WindowsMediaFoundationNative.MFStartup(WindowsMediaFoundationNative.MF_VERSION,
+                WindowsMediaFoundationNative.MFSTARTUP_NOSOCKET);
+
+            WindowsCameraFaults.ThrowIfFailed(result, "Media Foundation startup failed.");
             _mediaFoundationStarted = true;
         }
         catch
@@ -130,9 +124,11 @@ internal sealed class MediaFoundationPlatformScope : IDisposable
             return;
 
         if (_mediaFoundationStarted)
-            WindowsMediaFoundationNative.MFShutdown();
+            _ = WindowsMediaFoundationNative.MFShutdown();
+
         if (_shouldUninitializeCom)
             WindowsMediaFoundationNative.CoUninitialize();
+
         _disposed = true;
     }
 }
@@ -142,33 +138,30 @@ internal static class WindowsCameraFaults
     public static InputCameraException CreateException(int hresult, string message, string nativeFacility = "MediaFoundation") =>
         new(CreateFault(hresult, message, nativeFacility));
 
-    public static Broiler.Input.InputFault CreateFault(int hresult, string message, string nativeFacility = "MediaFoundation")
+    public static InputFault CreateFault(int hresult, string message, string nativeFacility = "MediaFoundation")
     {
-        Broiler.Input.InputErrorCategory category = hresult switch
+        InputErrorCategory category = hresult switch
         {
-            WindowsMediaFoundationNative.E_ACCESSDENIED => Broiler.Input.InputErrorCategory.PermissionDenied,
+            WindowsMediaFoundationNative.E_ACCESSDENIED => InputErrorCategory.PermissionDenied,
             WindowsMediaFoundationNative.E_NOTFOUND or
                 WindowsMediaFoundationNative.MF_E_NOT_FOUND or
                 WindowsMediaFoundationNative.MF_E_NO_CAPTURE_DEVICES_AVAILABLE or
-                WindowsMediaFoundationNative.MF_E_CAPTURE_SOURCE_NO_VIDEO_STREAM_PRESENT => Broiler.Input.InputErrorCategory.DeviceNotFound,
+                WindowsMediaFoundationNative.MF_E_CAPTURE_SOURCE_NO_VIDEO_STREAM_PRESENT => InputErrorCategory.DeviceNotFound,
             WindowsMediaFoundationNative.MF_E_VIDEO_DEVICE_LOCKED or
-                WindowsMediaFoundationNative.MF_E_VIDEO_RECORDING_DEVICE_PREEMPTED => Broiler.Input.InputErrorCategory.DeviceBusy,
-            WindowsMediaFoundationNative.MF_E_INVALIDMEDIATYPE => Broiler.Input.InputErrorCategory.UnsupportedCapability,
-            WindowsMediaFoundationNative.MF_E_UNSUPPORTED_CAPTURE_DEVICE_PRESENT => Broiler.Input.InputErrorCategory.UnsupportedCapability,
+                WindowsMediaFoundationNative.MF_E_VIDEO_RECORDING_DEVICE_PREEMPTED => InputErrorCategory.DeviceBusy,
+            WindowsMediaFoundationNative.MF_E_INVALIDMEDIATYPE => InputErrorCategory.UnsupportedCapability,
+            WindowsMediaFoundationNative.MF_E_UNSUPPORTED_CAPTURE_DEVICE_PRESENT => InputErrorCategory.UnsupportedCapability,
             WindowsMediaFoundationNative.MF_E_SHUTDOWN or
-                WindowsMediaFoundationNative.MF_E_VIDEO_RECORDING_DEVICE_INVALIDATED => Broiler.Input.InputErrorCategory.DeviceRemoved,
+                WindowsMediaFoundationNative.MF_E_VIDEO_RECORDING_DEVICE_INVALIDATED => InputErrorCategory.DeviceRemoved,
             WindowsMediaFoundationNative.MF_E_PLATFORM_NOT_INITIALIZED or
                 WindowsMediaFoundationNative.MF_E_NOT_INITIALIZED or
                 WindowsMediaFoundationNative.MF_E_NOT_AVAILABLE or
-                WindowsMediaFoundationNative.MF_E_DISABLED_IN_SAFEMODE => Broiler.Input.InputErrorCategory.HostUnavailable,
-            _ => Broiler.Input.InputErrorCategory.NativeFailure,
+                WindowsMediaFoundationNative.MF_E_DISABLED_IN_SAFEMODE => InputErrorCategory.HostUnavailable,
+            _ => InputErrorCategory.NativeFailure,
         };
 
-        return new Broiler.Input.InputFault(
-            category,
-            FormatNativeFailureMessage(message, hresult, nativeFacility),
-            nativeErrorCode: hresult,
-            nativeFacility: nativeFacility);
+        return new InputFault(category, FormatNativeFailureMessage(message, hresult, nativeFacility),
+            nativeErrorCode: hresult, nativeFacility: nativeFacility);
     }
 
     public static void ThrowIfFailed(int hresult, string message)
@@ -184,6 +177,7 @@ internal static class WindowsCameraFaults
         string suffix = name is null
             ? nativeFacility + " HRESULT " + formattedCode
             : nativeFacility + " HRESULT " + formattedCode + " (" + name + ")";
+
         return message + " Native error: " + suffix + ".";
     }
 
@@ -271,10 +265,7 @@ internal interface IMFAttributes
     int GetAllocatedBlob(ref Guid key, out IntPtr buffer, out int size);
 
     [PreserveSig]
-    int GetUnknown(
-        ref Guid key,
-        ref Guid interfaceId,
-        [MarshalAs(UnmanagedType.IUnknown)] out object? value);
+    int GetUnknown(ref Guid key, ref Guid interfaceId, [MarshalAs(UnmanagedType.IUnknown)] out object? value);
 
     [PreserveSig]
     int SetItem(ref Guid key, IntPtr value);
@@ -328,9 +319,7 @@ internal interface IMFAttributes
 internal interface IMFActivate : IMFAttributes
 {
     [PreserveSig]
-    int ActivateObject(
-        ref Guid interfaceId,
-        [MarshalAs(UnmanagedType.IUnknown)] out object? activatedObject);
+    int ActivateObject(ref Guid interfaceId, [MarshalAs(UnmanagedType.IUnknown)] out object? activatedObject);
 
     [PreserveSig]
     int ShutdownObject();
@@ -345,26 +334,16 @@ internal interface IMFActivate : IMFAttributes
 internal interface IMFMediaSource
 {
     [PreserveSig]
-    int GetEvent(
-        int flags,
-        [MarshalAs(UnmanagedType.IUnknown)] out object? mediaEvent);
+    int GetEvent(int flags, [MarshalAs(UnmanagedType.IUnknown)] out object? mediaEvent);
 
     [PreserveSig]
-    int BeginGetEvent(
-        [MarshalAs(UnmanagedType.IUnknown)] object? callback,
-        [MarshalAs(UnmanagedType.IUnknown)] object? state);
+    int BeginGetEvent([MarshalAs(UnmanagedType.IUnknown)] object? callback, [MarshalAs(UnmanagedType.IUnknown)] object? state);
 
     [PreserveSig]
-    int EndGetEvent(
-        [MarshalAs(UnmanagedType.IUnknown)] object result,
-        [MarshalAs(UnmanagedType.IUnknown)] out object? mediaEvent);
+    int EndGetEvent([MarshalAs(UnmanagedType.IUnknown)] object result, [MarshalAs(UnmanagedType.IUnknown)] out object? mediaEvent);
 
     [PreserveSig]
-    int QueueEvent(
-        int mediaEventType,
-        ref Guid extendedType,
-        int status,
-        IntPtr value);
+    int QueueEvent(int mediaEventType, ref Guid extendedType, int status, IntPtr value);
 
     [PreserveSig]
     int GetCharacteristics(out int characteristics);
@@ -373,10 +352,7 @@ internal interface IMFMediaSource
     int CreatePresentationDescriptor([MarshalAs(UnmanagedType.IUnknown)] out object? presentationDescriptor);
 
     [PreserveSig]
-    int Start(
-        [MarshalAs(UnmanagedType.IUnknown)] object presentationDescriptor,
-        ref Guid timeFormat,
-        IntPtr startPosition);
+    int Start([MarshalAs(UnmanagedType.IUnknown)] object presentationDescriptor, ref Guid timeFormat, IntPtr startPosition);
 
     [PreserveSig]
     int Stop();
@@ -388,10 +364,10 @@ internal interface IMFMediaSource
     int Shutdown();
 }
 
-[ComImport]
+[GeneratedComInterface]
 [Guid("44AE0FA8-EA31-4109-8D2E-4CAE4997C555")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IMFMediaType : IMFAttributes
+internal partial interface IMFMediaType : IMFAttributes
 {
     [PreserveSig]
     int GetMajorType(out Guid majorType);
@@ -433,23 +409,14 @@ internal interface IMFSourceReader
     int SetCurrentPosition(ref Guid timeFormat, IntPtr position);
 
     [PreserveSig]
-    int ReadSample(
-        int streamIndex,
-        int controlFlags,
-        out int actualStreamIndex,
-        out SourceReaderFlags streamFlags,
-        out long timestamp,
-        out IMFSample? sample);
+    int ReadSample(int streamIndex, int controlFlags, out int actualStreamIndex, out SourceReaderFlags streamFlags,
+        out long timestamp, out IMFSample? sample);
 
     [PreserveSig]
     int Flush(int streamIndex);
 
     [PreserveSig]
-    int GetServiceForStream(
-        int streamIndex,
-        ref Guid service,
-        ref Guid interfaceId,
-        [MarshalAs(UnmanagedType.IUnknown)] out object? serviceObject);
+    int GetServiceForStream(int streamIndex, ref Guid service, ref Guid interfaceId, [MarshalAs(UnmanagedType.IUnknown)] out object? serviceObject);
 
     [PreserveSig]
     int GetPresentationAttribute(int streamIndex, ref Guid attribute, IntPtr value);
@@ -503,10 +470,7 @@ internal interface IMFSample
     int GetAllocatedBlob(ref Guid key, out IntPtr buffer, out int size);
 
     [PreserveSig]
-    int GetUnknown(
-        ref Guid key,
-        ref Guid interfaceId,
-        [MarshalAs(UnmanagedType.IUnknown)] out object? value);
+    int GetUnknown(ref Guid key, ref Guid interfaceId, [MarshalAs(UnmanagedType.IUnknown)] out object? value);
 
     [PreserveSig]
     int SetItem(ref Guid key, IntPtr value);
@@ -596,10 +560,10 @@ internal interface IMFSample
     int CopyToBuffer(IMFMediaBuffer buffer);
 }
 
-[ComImport]
+[GeneratedComInterface]
 [Guid("045FA593-8799-42B8-BC8D-8968C6453507")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IMFMediaBuffer
+internal partial interface IMFMediaBuffer
 {
     [PreserveSig]
     int Lock(out IntPtr buffer, out int maxLength, out int currentLength);

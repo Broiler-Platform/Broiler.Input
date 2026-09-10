@@ -4,9 +4,7 @@ namespace Broiler.Input.Microphone;
 
 public sealed record MicrophoneOpenOptions
 {
-    public MicrophoneOpenOptions(
-        MicrophoneFormat? preferredFormat = null,
-        MicrophoneSessionOptions? sessionOptions = null,
+    public MicrophoneOpenOptions(MicrophoneFormat? preferredFormat = null, MicrophoneSessionOptions? sessionOptions = null, 
         MicrophoneEndpointRole role = MicrophoneEndpointRole.Console)
     {
         PreferredFormat = preferredFormat;

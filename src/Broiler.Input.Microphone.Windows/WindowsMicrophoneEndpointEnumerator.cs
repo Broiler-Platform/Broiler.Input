@@ -4,8 +4,6 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
-using Broiler.Input;
-using Broiler.Input.Microphone;
 
 namespace Broiler.Input.Microphone.Windows;
 
@@ -16,9 +14,7 @@ internal static class WindowsMicrophoneEndpointEnumerator
     private const string CaptureModeValue = "wasapi-shared-event";
     private const ushort PropVariantString = 31;
 
-    private static readonly PropertyKey FriendlyNameKey = new(
-        new Guid("A45C254E-DF1C-4EFD-8020-67D146A850E0"),
-        14);
+    private static readonly PropertyKey FriendlyNameKey = new(new Guid("A45C254E-DF1C-4EFD-8020-67D146A850E0"), 14);
 
     public static IReadOnlyList<InputDeviceDescriptor> EnumerateCaptureDevices()
     {
@@ -30,10 +26,12 @@ internal static class WindowsMicrophoneEndpointEnumerator
         {
             IMMDeviceEnumerator enumerator = CreateEnumerator(out enumeratorObject);
             Dictionary<MicrophoneEndpointRole, string> defaults = GetDefaultEndpointIds(enumerator);
-            WindowsMicrophoneFaults.ThrowIfFailed(
-                enumerator.EnumAudioEndpoints(EDataFlow.Capture, DeviceState.Active, out collection),
-                "Microphone endpoint enumeration failed.");
-            WindowsMicrophoneFaults.ThrowIfFailed(collection.GetCount(out uint count), "Microphone endpoint count failed.");
+
+            int result = enumerator.EnumAudioEndpoints(EDataFlow.Capture, DeviceState.Active, out collection);
+            WindowsMicrophoneFaults.ThrowIfFailed(result, "Microphone endpoint enumeration failed.");
+
+            result = collection.GetCount(out uint count);
+            WindowsMicrophoneFaults.ThrowIfFailed(result, "Microphone endpoint count failed.");
 
             List<InputDeviceDescriptor> devices = new((int)count);
             for (uint index = 0; index < count; index++)
@@ -84,26 +82,25 @@ internal static class WindowsMicrophoneEndpointEnumerator
     public static string? GetNativeEndpointId(InputDeviceDescriptor descriptor)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
-        return descriptor.Capabilities
-            .FirstOrDefault(static capability => capability.Name == EndpointIdCapability)
-            .Value;
+        return descriptor.Capabilities.FirstOrDefault(static capability => capability.Name == EndpointIdCapability).Value;
     }
 
     public static IMMDevice GetDevice(InputDeviceDescriptor descriptor, MicrophoneEndpointRole role, out object? enumeratorObject)
     {
         IMMDeviceEnumerator enumerator = CreateEnumerator(out enumeratorObject);
         string? endpointId = GetNativeEndpointId(descriptor);
+        int result;
+
         if (string.IsNullOrWhiteSpace(endpointId))
         {
-            WindowsMicrophoneFaults.ThrowIfFailed(
-                enumerator.GetDefaultAudioEndpoint(EDataFlow.Capture, ToRole(role), out IMMDevice defaultDevice),
-                "Default microphone endpoint lookup failed.");
+            result = enumerator.GetDefaultAudioEndpoint(EDataFlow.Capture, ToRole(role), out IMMDevice defaultDevice);
+            WindowsMicrophoneFaults.ThrowIfFailed(result, "Default microphone endpoint lookup failed.");
             return defaultDevice;
         }
 
-        WindowsMicrophoneFaults.ThrowIfFailed(
-            enumerator.GetDevice(endpointId, out IMMDevice device),
-            "Microphone endpoint lookup failed.");
+        result = enumerator.GetDevice(endpointId, out IMMDevice device);
+        WindowsMicrophoneFaults.ThrowIfFailed(result, "Microphone endpoint lookup failed.");
+
         return device;
     }
 
@@ -111,14 +108,11 @@ internal static class WindowsMicrophoneEndpointEnumerator
     {
         Guid classId = WindowsWasapiNative.MMDeviceEnumeratorClassId;
         Guid interfaceId = WindowsWasapiNative.IMMDeviceEnumeratorId;
-        WindowsMicrophoneFaults.ThrowIfFailed(
-            WindowsWasapiNative.CoCreateInstance(
-                ref classId,
-                IntPtr.Zero,
-                WindowsWasapiNative.CLSCTX_INPROC_SERVER,
-                ref interfaceId,
-                out enumeratorObject),
-            "MMDeviceEnumerator activation failed.");
+
+        int result = WindowsWasapiNative.CoCreateInstance(ref classId, IntPtr.Zero, WindowsWasapiNative.CLSCTX_INPROC_SERVER,
+                ref interfaceId, out enumeratorObject);
+
+        WindowsMicrophoneFaults.ThrowIfFailed(result, "MMDeviceEnumerator activation failed.");
 
         if (enumeratorObject is not IMMDeviceEnumerator enumerator)
             throw WindowsMicrophoneFaults.CreateException(unchecked((int)0x80004002), "MMDeviceEnumerator interface activation failed.");
@@ -147,9 +141,7 @@ internal static class WindowsMicrophoneEndpointEnumerator
         return defaults;
     }
 
-    private static InputDeviceDescriptor CreateDescriptor(
-        IMMDevice device,
-        IReadOnlyDictionary<MicrophoneEndpointRole, string> defaults)
+    private static InputDeviceDescriptor CreateDescriptor(IMMDevice device, IReadOnlyDictionary<MicrophoneEndpointRole, string> defaults)
     {
         string endpointId = GetDeviceId(device);
         string displayName = GetFriendlyName(device) ?? endpointId;
@@ -166,12 +158,8 @@ internal static class WindowsMicrophoneEndpointEnumerator
         }
 
         InputDeviceAvailability availability = GetAvailability(device);
-        return new InputDeviceDescriptor(
-            InputDeviceId.FromOpaqueValue(ToStableInputId(endpointId)),
-            InputKind.Microphone,
-            displayName,
-            availability,
-            capabilities);
+        return new InputDeviceDescriptor(InputDeviceId.FromOpaqueValue(ToStableInputId(endpointId)), InputKind.Microphone,
+            displayName, availability, capabilities);
     }
 
     private static string GetDeviceId(IMMDevice device)
@@ -184,6 +172,7 @@ internal static class WindowsMicrophoneEndpointEnumerator
     {
         IPropertyStore? propertyStore = null;
         PropVariant value = default;
+
         try
         {
             int openResult = device.OpenPropertyStore(StorageAccess.Read, out propertyStore);
@@ -200,7 +189,8 @@ internal static class WindowsMicrophoneEndpointEnumerator
         finally
         {
             if (value.ValueType != 0)
-                WindowsWasapiNative.PropVariantClear(ref value);
+                _ = WindowsWasapiNative.PropVariantClear(ref value);
+
             ReleaseComObject(propertyStore);
         }
     }
@@ -218,6 +208,7 @@ internal static class WindowsMicrophoneEndpointEnumerator
     {
         byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(endpointId));
         string suffix = Convert.ToHexString(hash, 0, 12).ToLowerInvariant();
+        
         return $"windows:wasapi:microphone:{suffix}";
     }
 

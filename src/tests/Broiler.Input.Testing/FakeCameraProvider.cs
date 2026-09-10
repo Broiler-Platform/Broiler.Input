@@ -26,30 +26,25 @@ public sealed class FakeCameraProvider : ICameraInputProvider, IInputDeviceWatch
 
     public InputDeviceDescriptor AddDevice(string id, string displayName)
     {
-        InputDeviceDescriptor descriptor = new(
-            InputDeviceId.FromOpaqueValue(id),
-            InputKind.Camera,
-            displayName,
-            InputDeviceAvailability.Available,
-            [new InputCapability("camera.capture.source", "fake")]);
+        InputDeviceDescriptor descriptor = new(InputDeviceId.FromOpaqueValue(id), InputKind.Camera, displayName,
+            InputDeviceAvailability.Available, [new InputCapability("camera.capture.source", "fake")]);
         _descriptors.Add(descriptor);
         DeviceChanged?.Invoke(new InputDeviceChange(InputDeviceChangeKind.Added, descriptor, _clock.GetTimestamp()));
+
         return descriptor;
     }
 
-    public ValueTask<IReadOnlyList<InputDeviceDescriptor>> GetDevicesAsync(
-        CancellationToken cancellationToken = default)
+    public ValueTask<IReadOnlyList<InputDeviceDescriptor>> GetDevicesAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return ValueTask.FromResult<IReadOnlyList<InputDeviceDescriptor>>(_descriptors.ToArray());
     }
 
-    public ValueTask<CameraInputDevice> OpenAsync(
-        InputDeviceDescriptor descriptor,
-        CameraOpenOptions options,
-        CancellationToken cancellationToken = default)
+    public ValueTask<CameraInputDevice> OpenAsync(InputDeviceDescriptor descriptor, 
+        CameraOpenOptions options, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        
         ArgumentNullException.ThrowIfNull(descriptor);
         ArgumentNullException.ThrowIfNull(options);
 

@@ -2,11 +2,8 @@ using System;
 
 namespace Broiler.Input.Windows;
 
-public sealed record WindowsRawInputRegistrationOptions(
-    bool ReceiveInputWhenNotFocused = false,
-    bool SuppressLegacyMessages = false,
-    bool ObserveDeviceChanges = true,
-    bool AcknowledgeBackgroundInput = false)
+public sealed record WindowsRawInputRegistrationOptions(bool ReceiveInputWhenNotFocused = false, bool SuppressLegacyMessages = false,
+    bool ObserveDeviceChanges = true, bool AcknowledgeBackgroundInput = false)
 {
     public void Validate(IntPtr targetWindow)
     {

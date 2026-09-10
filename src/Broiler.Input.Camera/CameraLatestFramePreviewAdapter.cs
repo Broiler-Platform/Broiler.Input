@@ -1,10 +1,11 @@
 using System;
+using System.Threading;
 
 namespace Broiler.Input.Camera;
 
 public sealed class CameraLatestFramePreviewAdapter : IDisposable
 {
-    private readonly object _gate = new();
+    private readonly Lock _gate = new();
     private readonly CameraInputDevice _device;
     private CameraFrameLease? _latestFrame;
     private bool _disposed;

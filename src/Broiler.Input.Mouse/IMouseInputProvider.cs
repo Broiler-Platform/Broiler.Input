@@ -1,5 +1,3 @@
 namespace Broiler.Input.Mouse;
 
-public interface IMouseInputProvider : IInputProvider<MouseInputDevice, MouseOpenOptions>
-{
-}
+public interface IMouseInputProvider : IInputProvider<MouseInputDevice, MouseOpenOptions> { }

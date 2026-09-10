@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Broiler.Input;
-using Broiler.Input.Microphone;
 
 namespace Broiler.Input.Microphone.Windows;
 
@@ -15,7 +13,7 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
     private const ushort WaveFormatIeeeFloat = 0x0003;
     private const ushort WaveFormatExtensible = 0xFFFE;
 
-    private readonly object _gate = new();
+    private readonly Lock _gate = new();
     private readonly InputDeviceDescriptor _descriptor;
     private readonly MicrophoneOpenOptions _options;
     private readonly Action<MicrophoneBufferLease> _deliver;
@@ -36,14 +34,9 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
     private long _silentCount;
     private long _discontinuousCount;
 
-    public WindowsMicrophoneCaptureSession(
-        InputDeviceDescriptor descriptor,
-        MicrophoneOpenOptions options,
-        Action<MicrophoneBufferLease> deliver,
-        Action<InputFault> invalidated,
-        Action<MicrophoneCaptureStatistics> statisticsChanged,
-        IInputClock clock,
-        IInputDiagnosticSink? diagnostics)
+    public WindowsMicrophoneCaptureSession(InputDeviceDescriptor descriptor, MicrophoneOpenOptions options,
+        Action<MicrophoneBufferLease> deliver, Action<InputFault> invalidated, Action<MicrophoneCaptureStatistics> statisticsChanged,
+        IInputClock clock, IInputDiagnosticSink? diagnostics)
     {
         _descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
         _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -165,21 +158,17 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
             if (_eventHandle == IntPtr.Zero)
                 throw WindowsMicrophoneFaults.CreateException(Marshal.GetHRForLastWin32Error(), "WASAPI capture event creation failed.");
 
-            WindowsMicrophoneFaults.ThrowIfFailed(
-                audioClient.Initialize(
-                    AudioClientShareMode.Shared,
-                    AudioClientStreamFlags.EventCallback,
-                    _options.SessionOptions.RequestedLatency.Ticks,
-                    0,
-                    mixFormatPointer,
-                    IntPtr.Zero),
-                "WASAPI shared-mode microphone capture initialization failed.");
+            int result = audioClient.Initialize(AudioClientShareMode.Shared, AudioClientStreamFlags.EventCallback,
+                    _options.SessionOptions.RequestedLatency.Ticks, 0, mixFormatPointer, IntPtr.Zero);
+
+            WindowsMicrophoneFaults.ThrowIfFailed(result, "WASAPI shared-mode microphone capture initialization failed.");
             WindowsMicrophoneFaults.ThrowIfFailed(audioClient.SetEventHandle(_eventHandle), "WASAPI event binding failed.");
 
             Guid captureClientId = WindowsWasapiNative.IAudioCaptureClientId;
-            WindowsMicrophoneFaults.ThrowIfFailed(
-                audioClient.GetService(ref captureClientId, out captureClientObject),
-                "WASAPI capture client activation failed.");
+            result = audioClient.GetService(ref captureClientId, out captureClientObject);
+
+            WindowsMicrophoneFaults.ThrowIfFailed(result, "WASAPI capture client activation failed.");
+
             captureClient = captureClientObject as IAudioCaptureClient
                 ?? throw WindowsMicrophoneFaults.CreateException(unchecked((int)0x80004002), "WASAPI capture client interface activation failed.");
 
@@ -190,8 +179,10 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
             while (!IsStopRequested())
             {
                 uint waitResult = WindowsWasapiNative.WaitForSingleObject(_eventHandle, 250);
+
                 if (waitResult == WindowsWasapiNative.WAIT_TIMEOUT)
                     continue;
+
                 if (waitResult == WindowsWasapiNative.WAIT_FAILED)
                     throw WindowsMicrophoneFaults.CreateException(Marshal.GetHRForLastWin32Error(), "WASAPI capture wait failed.");
 
@@ -201,16 +192,13 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
         catch (InputMicrophoneException exception)
         {
             _started?.TrySetException(exception);
+
             if (exception.Fault.Category == InputErrorCategory.DeviceRemoved && AreCallbacksEnabled())
                 _invalidated(exception.Fault);
         }
         catch (Exception exception)
         {
-            InputFault fault = new(
-                InputErrorCategory.NativeFailure,
-                "WASAPI microphone capture failed.",
-                exception,
-                nativeFacility: "WASAPI");
+            InputFault fault = new(InputErrorCategory.NativeFailure, "WASAPI microphone capture failed.", exception, nativeFacility: "WASAPI");
             _started?.TrySetException(new InputMicrophoneException(fault));
         }
         finally
@@ -239,13 +227,10 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
     private static IAudioClient ActivateAudioClient(IMMDevice endpoint, out object? audioClientObject)
     {
         Guid audioClientId = WindowsWasapiNative.IAudioClientId;
-        WindowsMicrophoneFaults.ThrowIfFailed(
-            endpoint.Activate(
-                ref audioClientId,
-                WindowsWasapiNative.CLSCTX_INPROC_SERVER,
-                IntPtr.Zero,
-                out audioClientObject),
-            "WASAPI audio client activation failed.");
+        int result = endpoint.Activate(ref audioClientId, WindowsWasapiNative.CLSCTX_INPROC_SERVER,
+                IntPtr.Zero, out audioClientObject);
+
+        WindowsMicrophoneFaults.ThrowIfFailed(result, "WASAPI audio client activation failed.");
 
         return audioClientObject as IAudioClient
             ?? throw WindowsMicrophoneFaults.CreateException(unchecked((int)0x80004002), "WASAPI audio client interface activation failed.");
@@ -271,11 +256,8 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
         }
 
         MicrophoneSampleFormat sampleFormat = ToSampleFormat(formatTag, bitsPerSample, subFormat);
-        return new MicrophoneFormat(
-            checked((int)waveFormat.SamplesPerSec),
-            waveFormat.Channels,
-            bitsPerSample,
-            sampleFormat);
+        return new MicrophoneFormat(checked((int)waveFormat.SamplesPerSec), waveFormat.Channels,
+            bitsPerSample, sampleFormat);
     }
 
     private static MicrophoneSampleFormat ToSampleFormat(ushort formatTag, ushort bitsPerSample, Guid subFormat)
@@ -328,14 +310,12 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
             if (framesInNextPacket == 0)
                 break;
 
-            int bufferResult = captureClient.GetBuffer(
-                out IntPtr data,
-                out uint framesToRead,
-                out AudioClientBufferFlags flags,
-                out ulong devicePosition,
-                out ulong qpcPosition);
+            int bufferResult = captureClient.GetBuffer(out IntPtr data, out uint framesToRead, out AudioClientBufferFlags flags,
+                out ulong devicePosition, out ulong qpcPosition);
+
             if (bufferResult == WindowsWasapiNative.AUDCLNT_E_DEVICE_INVALIDATED)
                 throw WindowsMicrophoneFaults.CreateException(bufferResult, "The microphone endpoint was invalidated.");
+
             WindowsMicrophoneFaults.ThrowIfFailed(bufferResult, "WASAPI capture packet read failed.");
 
             try
@@ -344,20 +324,13 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
             }
             finally
             {
-                WindowsMicrophoneFaults.ThrowIfFailed(
-                    captureClient.ReleaseBuffer(framesToRead),
-                    "WASAPI capture packet release failed.");
+                WindowsMicrophoneFaults.ThrowIfFailed(captureClient.ReleaseBuffer(framesToRead), "WASAPI capture packet release failed.");
             }
         }
     }
 
-    private void CapturePacket(
-        IntPtr data,
-        uint framesToRead,
-        AudioClientBufferFlags flags,
-        ulong devicePosition,
-        ulong qpcPosition,
-        MicrophoneFormat format)
+    private void CapturePacket(IntPtr data, uint framesToRead, AudioClientBufferFlags flags,
+        ulong devicePosition, ulong qpcPosition, MicrophoneFormat format)
     {
         bool silent = (flags & AudioClientBufferFlags.Silent) != 0;
         bool discontinuous = (flags & AudioClientBufferFlags.DataDiscontinuity) != 0;
@@ -368,31 +341,32 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
 
         int byteCount = checked((int)framesToRead * format.BytesPerFrame);
         byte[] buffer = new byte[byteCount];
+
         if (!silent && data != IntPtr.Zero && byteCount > 0)
             Marshal.Copy(data, buffer, 0, byteCount);
 
         MicrophoneBufferFlags microphoneFlags = MicrophoneBufferFlags.None;
+
         if (silent)
             microphoneFlags |= MicrophoneBufferFlags.Silent;
+
         if (discontinuous && _options.SessionOptions.ReportDiscontinuities)
             microphoneFlags |= MicrophoneBufferFlags.Discontinuous;
+
         if (timestampError)
             microphoneFlags |= MicrophoneBufferFlags.TimestampError;
 
         InputTimestamp timestamp = qpcPosition > 0 && !timestampError
-            ? new InputTimestamp(checked((long)Math.Min(qpcPosition, (ulong)long.MaxValue)), WasapiQpcFrequency, "Windows.WASAPI.QPC")
+            ? new InputTimestamp(checked((long)Math.Min(qpcPosition, long.MaxValue)), WasapiQpcFrequency, "Windows.WASAPI.QPC")
             : _clock.GetTimestamp();
 
-        MicrophoneBufferLease lease = new(
-            buffer,
-            format,
-            timestamp,
-            checked((long)Math.Min(devicePosition, (ulong)long.MaxValue)),
-            microphoneFlags);
+        MicrophoneBufferLease lease = new(buffer, format, timestamp, checked((long)Math.Min(devicePosition, long.MaxValue)), microphoneFlags);
 
         _capturedCount++;
+
         if (silent)
             _silentCount++;
+
         if (discontinuous)
             _discontinuousCount++;
 
@@ -423,12 +397,8 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
             catch (Exception exception)
             {
                 lease.Dispose();
-                _diagnostics.Write(new InputDiagnosticEvent(
-                    InputDiagnosticLevel.Error,
-                    "microphone.callback.failed",
-                    _clock.GetTimestamp(),
-                    _descriptor.Id,
-                    InputErrorCategory.NativeFailure,
+                _diagnostics.Write(new InputDiagnosticEvent(InputDiagnosticLevel.Error, "microphone.callback.failed",
+                    _clock.GetTimestamp(), _descriptor.Id, InputErrorCategory.NativeFailure,
                     new Dictionary<string, string>
                     {
                         ["exception"] = exception.GetType().FullName ?? exception.GetType().Name,
@@ -440,14 +410,8 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
 
     private void PublishStatistics()
     {
-        _statisticsChanged(new MicrophoneCaptureStatistics(
-            _capturedCount,
-            _deliveredCount,
-            _deliveryQueue.DroppedNewestCount,
-            _deliveryQueue.DroppedOldestCount,
-            _silentCount,
-            _discontinuousCount,
-            _deliveryQueue.QueueDepth));
+        _statisticsChanged(new MicrophoneCaptureStatistics(_capturedCount, _deliveredCount, _deliveryQueue.DroppedNewestCount,
+            _deliveryQueue.DroppedOldestCount, _silentCount, _discontinuousCount, _deliveryQueue.QueueDepth));
     }
 
     private bool IsStopRequested()

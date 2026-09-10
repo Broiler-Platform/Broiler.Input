@@ -6,10 +6,11 @@ using Broiler.Input.Microphone;
 
 namespace Broiler.Input.Testing;
 
-public sealed class FakeMicrophoneInputDevice : MicrophoneInputDevice
+public sealed class FakeMicrophoneInputDevice(InputDeviceDescriptor descriptor, MicrophoneOpenOptions options, ManualInputClock clock,
+    IInputDiagnosticSink? diagnostics = null) : MicrophoneInputDevice(descriptor, clock, diagnostics)
 {
     private readonly Queue<MicrophoneBufferLease> _queue = new();
-    private readonly MicrophoneOpenOptions _options;
+    private readonly MicrophoneOpenOptions _options = options ?? throw new ArgumentNullException(nameof(options));
     private long _capturedCount;
     private long _deliveredCount;
     private long _droppedNewestCount;
@@ -17,26 +18,19 @@ public sealed class FakeMicrophoneInputDevice : MicrophoneInputDevice
     private long _silentCount;
     private long _discontinuousCount;
 
-    public FakeMicrophoneInputDevice(
-        InputDeviceDescriptor descriptor,
-        MicrophoneOpenOptions options,
-        ManualInputClock clock,
-        IInputDiagnosticSink? diagnostics = null)
-        : base(descriptor, clock, diagnostics)
-    {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-    }
-
     public bool TryCapture(byte[] bytes, MicrophoneFormat format, MicrophoneBufferFlags flags = MicrophoneBufferFlags.None)
     {
         ThrowIfDisposed();
+
         ArgumentNullException.ThrowIfNull(bytes);
         ArgumentNullException.ThrowIfNull(format);
 
         MicrophoneBufferLease lease = new(bytes, format, Clock.GetTimestamp(), _capturedCount, flags);
         _capturedCount++;
+
         if ((flags & MicrophoneBufferFlags.Silent) != 0)
             _silentCount++;
+
         if ((flags & MicrophoneBufferFlags.Discontinuous) != 0)
             _discontinuousCount++;
 
@@ -69,10 +63,7 @@ public sealed class FakeMicrophoneInputDevice : MicrophoneInputDevice
         return true;
     }
 
-    public void SimulateInvalidation()
-    {
-        MarkCaptureInvalidated(new InputFault(InputErrorCategory.DeviceRemoved, "Fake microphone endpoint was invalidated."));
-    }
+    public void SimulateInvalidation() => MarkCaptureInvalidated(new InputFault(InputErrorCategory.DeviceRemoved, "Fake microphone endpoint was invalidated."));
 
     public override async ValueTask OpenAsync(CancellationToken cancellationToken = default)
     {
@@ -155,14 +146,8 @@ public sealed class FakeMicrophoneInputDevice : MicrophoneInputDevice
 
     private void PublishStatistics()
     {
-        SetCaptureStatistics(new MicrophoneCaptureStatistics(
-            _capturedCount,
-            _deliveredCount,
-            _droppedNewestCount,
-            _droppedOldestCount,
-            _silentCount,
-            _discontinuousCount,
-            _queue.Count));
+        SetCaptureStatistics(new MicrophoneCaptureStatistics(_capturedCount, _deliveredCount, _droppedNewestCount,
+            _droppedOldestCount, _silentCount, _discontinuousCount, _queue.Count));
     }
 
     private void ManualAdvance()

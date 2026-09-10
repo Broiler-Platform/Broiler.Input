@@ -26,24 +26,14 @@ namespace Broiler.Input.Text.Android;
 /// So a consumer replaces the pre-edit span on every composition event and inserts on text events,
 /// and exactly one of the two fires for any given piece of text.
 /// </remarks>
-public sealed class AndroidTextInputDevice : TextInputDevice, IAndroidInputDevice
+public sealed class AndroidTextInputDevice(InputDeviceDescriptor descriptor, AndroidUptimeInputClock clock,
+    TextInputOpenOptions? options = null, IAndroidEditorTextSource? editorTextSource = null) :
+    TextInputDevice(descriptor, clock), IAndroidInputDevice
 {
-    private readonly AndroidUptimeInputClock _clock;
-    private readonly TextInputOpenOptions _options;
+    private readonly AndroidUptimeInputClock _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+    private readonly TextInputOpenOptions _options = options ?? new TextInputOpenOptions();
     private string _composingText = string.Empty;
     private bool _isComposing;
-
-    public AndroidTextInputDevice(
-        InputDeviceDescriptor descriptor,
-        AndroidUptimeInputClock clock,
-        TextInputOpenOptions? options = null,
-        IAndroidEditorTextSource? editorTextSource = null)
-        : base(descriptor, clock)
-    {
-        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
-        _options = options ?? new TextInputOpenOptions();
-        EditorTextSource = editorTextSource;
-    }
 
     /// <summary>
     /// Raised when an input method asks for an editor mutation the neutral text contract cannot
@@ -55,7 +45,7 @@ public sealed class AndroidTextInputDevice : TextInputDevice, IAndroidInputDevic
     /// The editor the input method queries. Null until the host attaches one, in which case
     /// queries return empty results and an IME degrades to committed text only.
     /// </summary>
-    public IAndroidEditorTextSource? EditorTextSource { get; set; }
+    public IAndroidEditorTextSource? EditorTextSource { get; set; } = editorTextSource;
 
     /// <summary>True while an input method is composing.</summary>
     public bool IsComposing => _isComposing;
@@ -86,13 +76,9 @@ public sealed class AndroidTextInputDevice : TextInputDevice, IAndroidInputDevic
         _composingText = text;
 
         int caret = ResolveCaret(text.Length, newCursorPosition);
-        RaiseCompositionChanged(new TextCompositionEvent(
-            NextEventHeader(Timestamp(eventTimeMilliseconds)),
-            text,
-            state,
-            caret,
-            0,
-            InputEventSource.Raw));
+        RaiseCompositionChanged(new TextCompositionEvent(NextEventHeader(Timestamp(eventTimeMilliseconds)),
+            text, state, caret, 0, InputEventSource.Raw));
+
         return true;
     }
 
@@ -115,23 +101,16 @@ public sealed class AndroidTextInputDevice : TextInputDevice, IAndroidInputDevic
             _isComposing = false;
             _composingText = string.Empty;
 
-            RaiseCompositionChanged(new TextCompositionEvent(
-                NextEventHeader(Timestamp(eventTimeMilliseconds)),
-                text,
-                TextCompositionState.Committed,
-                ResolveCaret(text.Length, newCursorPosition),
-                0,
-                InputEventSource.Raw));
+            RaiseCompositionChanged(new TextCompositionEvent(NextEventHeader(Timestamp(eventTimeMilliseconds)),
+                text, TextCompositionState.Committed, ResolveCaret(text.Length, newCursorPosition), 0, InputEventSource.Raw));
+
             return true;
         }
 
         if (text.Length == 0)
             return false;
 
-        RaiseTextInput(new TextInputEvent(
-            NextEventHeader(Timestamp(eventTimeMilliseconds)),
-            text,
-            InputEventSource.Raw));
+        RaiseTextInput(new TextInputEvent(NextEventHeader(Timestamp(eventTimeMilliseconds)), text, InputEventSource.Raw));
         return true;
     }
 
@@ -152,13 +131,9 @@ public sealed class AndroidTextInputDevice : TextInputDevice, IAndroidInputDevic
         _isComposing = false;
         _composingText = string.Empty;
 
-        RaiseCompositionChanged(new TextCompositionEvent(
-            NextEventHeader(Timestamp(eventTimeMilliseconds)),
-            committed,
-            TextCompositionState.Committed,
-            committed.Length,
-            0,
-            InputEventSource.Raw));
+        RaiseCompositionChanged(new TextCompositionEvent(NextEventHeader(Timestamp(eventTimeMilliseconds)), committed,
+            TextCompositionState.Committed, committed.Length, 0, InputEventSource.Raw));
+
         return true;
     }
 
@@ -178,13 +153,9 @@ public sealed class AndroidTextInputDevice : TextInputDevice, IAndroidInputDevic
         _isComposing = false;
         _composingText = string.Empty;
 
-        RaiseCompositionChanged(new TextCompositionEvent(
-            NextEventHeader(Timestamp(eventTimeMilliseconds)),
-            string.Empty,
-            TextCompositionState.Cancelled,
-            0,
-            0,
-            InputEventSource.Raw));
+        RaiseCompositionChanged(new TextCompositionEvent(NextEventHeader(Timestamp(eventTimeMilliseconds)), string.Empty,
+            TextCompositionState.Cancelled, 0, 0, InputEventSource.Raw));
+
         return true;
     }
 
@@ -196,9 +167,7 @@ public sealed class AndroidTextInputDevice : TextInputDevice, IAndroidInputDevic
         if (!CanDeliverInput || (beforeLength <= 0 && afterLength <= 0))
             return false;
 
-        EditRequested?.Invoke(AndroidTextEditRequest.DeleteSurrounding(
-            Math.Max(0, beforeLength),
-            Math.Max(0, afterLength)));
+        EditRequested?.Invoke(AndroidTextEditRequest.DeleteSurrounding(Math.Max(0, beforeLength), Math.Max(0, afterLength)));
         return true;
     }
 
@@ -266,9 +235,7 @@ public sealed class AndroidTextInputDevice : TextInputDevice, IAndroidInputDevic
         if (!_options.CancelCompositionOnFocusLoss)
             return false;
 
-        EmitDiagnostic(
-            InputDiagnosticLevel.Information,
-            "input.text.focus-lost",
+        EmitDiagnostic(InputDiagnosticLevel.Information, "input.text.focus-lost",
             new Dictionary<string, string> { ["composing"] = _isComposing ? "true" : "false" });
 
         return CancelComposition();
@@ -282,10 +249,7 @@ public sealed class AndroidTextInputDevice : TextInputDevice, IAndroidInputDevic
 
     void IAndroidInputDevice.NotifyCaptureLost(string reason)
     {
-        EmitDiagnostic(
-            InputDiagnosticLevel.Information,
-            "input.text.capture-lost",
-            new Dictionary<string, string> { ["reason"] = reason });
+        EmitDiagnostic(InputDiagnosticLevel.Information, "input.text.capture-lost", new Dictionary<string, string> { ["reason"] = reason });
         CancelComposition();
     }
 
@@ -302,8 +266,7 @@ public sealed class AndroidTextInputDevice : TextInputDevice, IAndroidInputDevic
             _clock.Observe(eventTimeMilliseconds);
     }
 
-    private InputTimestamp Timestamp(long eventTimeMilliseconds) =>
-        eventTimeMilliseconds > 0
+    private InputTimestamp Timestamp(long eventTimeMilliseconds) => eventTimeMilliseconds > 0
             ? AndroidUptimeInputClock.FromUptimeMilliseconds(eventTimeMilliseconds)
             : _clock.GetTimestamp();
 

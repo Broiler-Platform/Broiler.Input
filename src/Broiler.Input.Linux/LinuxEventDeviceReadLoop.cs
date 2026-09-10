@@ -4,21 +4,12 @@ using System.Threading;
 
 namespace Broiler.Input.Linux;
 
-public sealed class LinuxEventDeviceReadLoop
+public sealed class LinuxEventDeviceReadLoop(LinuxEventDeviceStream stream, int pollTimeoutMilliseconds)
 {
-    private readonly LinuxEventDeviceStream _stream;
-    private readonly int _pollTimeoutMilliseconds;
+    private readonly LinuxEventDeviceStream _stream = stream ?? throw new ArgumentNullException(nameof(stream));
+    private readonly int _pollTimeoutMilliseconds = pollTimeoutMilliseconds <= 0 ? 50 : pollTimeoutMilliseconds;
 
-    public LinuxEventDeviceReadLoop(LinuxEventDeviceStream stream, int pollTimeoutMilliseconds)
-    {
-        _stream = stream ?? throw new ArgumentNullException(nameof(stream));
-        _pollTimeoutMilliseconds = pollTimeoutMilliseconds <= 0 ? 50 : pollTimeoutMilliseconds;
-    }
-
-    public void Run(
-        Action<LinuxInputEvent> deliver,
-        Action<InputFault> faulted,
-        CancellationToken cancellationToken)
+    public void Run(Action<LinuxInputEvent> deliver, Action<InputFault> faulted, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(deliver);
         ArgumentNullException.ThrowIfNull(faulted);
@@ -43,14 +34,7 @@ public sealed class LinuxEventDeviceReadLoop
 
     private int PollOnce(CancellationToken cancellationToken, Action<InputFault> faulted)
     {
-        LinuxNativeMethods.PollFd[] fds =
-        [
-            new()
-            {
-                Fd = _stream.FileDescriptor,
-                Events = LinuxNativeMethods.POLLIN,
-            },
-        ];
+        LinuxNativeMethods.PollFd[] fds = [new() { Fd = _stream.FileDescriptor, Events = LinuxNativeMethods.POLLIN }];
 
         int result;
         do
@@ -77,13 +61,8 @@ public sealed class LinuxEventDeviceReadLoop
         return result;
     }
 
-    private bool ReadAvailable(
-        byte[] readBuffer,
-        byte[] pending,
-        ref int pendingLength,
-        Action<LinuxInputEvent> deliver,
-        Action<InputFault> faulted,
-        CancellationToken cancellationToken)
+    private bool ReadAvailable(byte[] readBuffer, byte[] pending, ref int pendingLength, Action<LinuxInputEvent> deliver,
+        Action<InputFault> faulted, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -124,11 +103,8 @@ public sealed class LinuxEventDeviceReadLoop
         return true;
     }
 
-    private static void DispatchParsedEvents(
-        byte[] pending,
-        ref int pendingLength,
-        Action<LinuxInputEvent> deliver,
-        Action<InputFault> faulted)
+    private static void DispatchParsedEvents(byte[] pending, ref int pendingLength, 
+        Action<LinuxInputEvent> deliver, Action<InputFault> faulted)
     {
         int offset = 0;
         while (LinuxInputEventParser.TryRead64(pending.AsSpan(offset, pendingLength - offset), out LinuxInputEvent inputEvent, out int consumed))

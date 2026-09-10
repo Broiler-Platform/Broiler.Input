@@ -13,14 +13,8 @@ public sealed class AndroidMotionSample
 {
     private readonly AndroidPointerSample[] _pointers;
 
-    public AndroidMotionSample(
-        int packedAction,
-        IEnumerable<AndroidPointerSample> pointers,
-        long eventTimeMilliseconds,
-        long downTimeMilliseconds = 0,
-        int metaState = 0,
-        int buttonState = 0,
-        int source = AndroidInputSource.Touchscreen)
+    public AndroidMotionSample(int packedAction, IEnumerable<AndroidPointerSample> pointers, long eventTimeMilliseconds,
+        long downTimeMilliseconds = 0, int metaState = 0, int buttonState = 0, int source = AndroidInputSource.Touchscreen)
     {
         ArgumentNullException.ThrowIfNull(pointers);
 
@@ -69,23 +63,9 @@ public sealed class AndroidMotionSample
     /// Convenience factory for a single-pointer event, which is every event a mouse or a
     /// one-finger gesture produces.
     /// </summary>
-    public static AndroidMotionSample SinglePointer(
-        int action,
-        int pointerId,
-        float x,
-        float y,
-        long eventTimeMilliseconds,
-        float pressure = 1f,
-        int toolType = AndroidMotionEventConstants.ToolTypeFinger,
-        int metaState = 0,
-        int buttonState = 0,
+    public static AndroidMotionSample SinglePointer(int action, int pointerId, float x, float y, long eventTimeMilliseconds,
+        float pressure = 1f, int toolType = AndroidMotionEventConstants.ToolTypeFinger, int metaState = 0, int buttonState = 0,
         int source = AndroidInputSource.Touchscreen) =>
-        new(
-            action,
-            [new AndroidPointerSample(pointerId, x, y, pressure, toolType)],
-            eventTimeMilliseconds,
-            eventTimeMilliseconds,
-            metaState,
-            buttonState,
-            source);
+        new(action, [new AndroidPointerSample(pointerId, x, y, pressure, toolType)], eventTimeMilliseconds,
+            eventTimeMilliseconds, metaState, buttonState, source);
 }

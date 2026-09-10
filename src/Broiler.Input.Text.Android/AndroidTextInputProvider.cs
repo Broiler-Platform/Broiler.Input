@@ -6,14 +6,9 @@ namespace Broiler.Input.Text.Android;
 /// <summary>
 /// Opens <see cref="AndroidTextInputDevice"/> instances for the Android input method.
 /// </summary>
-public sealed class AndroidTextInputProvider :
-    AndroidInputProvider<TextInputDevice, TextInputOpenOptions>,
-    ITextInputProvider
+public sealed class AndroidTextInputProvider(AndroidUptimeInputClock? clock = null) :
+    AndroidInputProvider<TextInputDevice, TextInputOpenOptions>(clock), ITextInputProvider
 {
-    public AndroidTextInputProvider(AndroidUptimeInputClock? clock = null)
-        : base(clock)
-    {
-    }
 
     /// <summary>
     /// The editor an input method queries. Assigning it after devices are open updates them, so a

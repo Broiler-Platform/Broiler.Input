@@ -15,21 +15,16 @@ namespace Broiler.Input.Android;
 /// calls <see cref="RegisterDevice"/> and <see cref="RemoveDevice"/>, and the provider turns those
 /// into the same <see cref="InputDeviceChange"/> notifications every other provider emits.
 /// </remarks>
-public abstract class AndroidInputProvider<TDevice, TOptions> : IInputProvider<TDevice, TOptions>, IInputDeviceWatcher
-    where TDevice : InputDevice
+public abstract class AndroidInputProvider<TDevice, TOptions>(AndroidUptimeInputClock? clock = null) :
+    IInputProvider<TDevice, TOptions>, IInputDeviceWatcher where TDevice : InputDevice
 {
     private readonly Dictionary<InputDeviceId, InputDeviceDescriptor> _descriptors = [];
     private readonly Dictionary<InputDeviceId, TDevice> _openDevices = [];
-    private readonly object _gate = new();
-
-    protected AndroidInputProvider(AndroidUptimeInputClock? clock = null)
-    {
-        Clock = clock ?? new AndroidUptimeInputClock();
-    }
+    private readonly Lock _gate = new();
 
     public event Action<InputDeviceChange>? DeviceChanged;
 
-    protected AndroidUptimeInputClock Clock { get; }
+    protected AndroidUptimeInputClock Clock { get; } = clock ?? new AndroidUptimeInputClock();
 
     /// <summary>
     /// Adds or updates a device descriptor. Returns true when the descriptor is new, false when it
@@ -47,10 +42,9 @@ public abstract class AndroidInputProvider<TDevice, TOptions> : IInputProvider<T
                 _descriptors[descriptor.Id] = descriptor;
         }
 
-        DeviceChanged?.Invoke(new InputDeviceChange(
-            added ? InputDeviceChangeKind.Added : InputDeviceChangeKind.Changed,
-            descriptor,
-            Clock.GetTimestamp()));
+        DeviceChanged?.Invoke(new InputDeviceChange(added ? InputDeviceChangeKind.Added : InputDeviceChangeKind.Changed,
+            descriptor, Clock.GetTimestamp()));
+
         return added;
     }
 
@@ -62,6 +56,7 @@ public abstract class AndroidInputProvider<TDevice, TOptions> : IInputProvider<T
     {
         InputDeviceDescriptor? descriptor;
         TDevice? openDevice;
+
         lock (_gate)
         {
             if (!_descriptors.Remove(id, out descriptor))
@@ -73,10 +68,10 @@ public abstract class AndroidInputProvider<TDevice, TOptions> : IInputProvider<T
         if (openDevice is IAndroidInputDevice removable)
             removable.NotifyRemoved(AndroidInputFaults.DeviceRemoved(id));
 
-        DeviceChanged?.Invoke(new InputDeviceChange(
-            InputDeviceChangeKind.Removed,
+        DeviceChanged?.Invoke(new InputDeviceChange(InputDeviceChangeKind.Removed,
             new InputDeviceDescriptor(id, descriptor!.Kind, descriptor.DisplayName, InputDeviceAvailability.Removed),
             Clock.GetTimestamp()));
+
         return true;
     }
 
@@ -105,9 +100,7 @@ public abstract class AndroidInputProvider<TDevice, TOptions> : IInputProvider<T
             return ValueTask.FromResult<IReadOnlyList<InputDeviceDescriptor>>([.. _descriptors.Values]);
     }
 
-    public ValueTask<TDevice> OpenAsync(
-        InputDeviceDescriptor descriptor,
-        TOptions options,
+    public ValueTask<TDevice> OpenAsync(InputDeviceDescriptor descriptor, TOptions options, 
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(descriptor);

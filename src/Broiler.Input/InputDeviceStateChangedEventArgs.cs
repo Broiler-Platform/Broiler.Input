@@ -2,21 +2,12 @@ using System;
 
 namespace Broiler.Input;
 
-public sealed class InputDeviceStateChangedEventArgs : EventArgs
+public sealed class InputDeviceStateChangedEventArgs(InputDeviceState previousState,
+    InputDeviceState currentState, InputTimestamp timestamp) : EventArgs
 {
-    public InputDeviceStateChangedEventArgs(
-        InputDeviceState previousState,
-        InputDeviceState currentState,
-        InputTimestamp timestamp)
-    {
-        PreviousState = previousState;
-        CurrentState = currentState;
-        Timestamp = timestamp;
-    }
+    public InputDeviceState PreviousState { get; } = previousState;
 
-    public InputDeviceState PreviousState { get; }
+    public InputDeviceState CurrentState { get; } = currentState;
 
-    public InputDeviceState CurrentState { get; }
-
-    public InputTimestamp Timestamp { get; }
+    public InputTimestamp Timestamp { get; } = timestamp;
 }

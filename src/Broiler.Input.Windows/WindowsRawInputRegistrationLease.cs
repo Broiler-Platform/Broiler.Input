@@ -8,11 +8,8 @@ public sealed class WindowsRawInputRegistrationLease : IDisposable
     private readonly WindowsRawInputRegistrationCoordinator _owner;
     private int _disposed;
 
-    internal WindowsRawInputRegistrationLease(
-        WindowsRawInputRegistrationCoordinator owner,
-        WindowsRawInputDeviceKind kind,
-        IntPtr targetWindow,
-        WindowsRawInputRegistrationOptions options)
+    internal WindowsRawInputRegistrationLease(WindowsRawInputRegistrationCoordinator owner, WindowsRawInputDeviceKind kind,
+        IntPtr targetWindow, WindowsRawInputRegistrationOptions options)
     {
         _owner = owner;
         Kind = kind;

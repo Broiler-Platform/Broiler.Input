@@ -3,19 +3,10 @@ using System.Threading.Tasks;
 
 namespace Broiler.Input.Testing;
 
-public sealed class FakeInputDevice : InputDevice
+public sealed class FakeInputDevice(InputDeviceDescriptor descriptor, FakeInputOpenOptions options, ManualInputClock clock,
+    IInputDiagnosticSink? diagnostics = null) : InputDevice(descriptor, clock, diagnostics)
 {
-    private readonly FakeBoundedInputQueue<string> _queue;
-
-    public FakeInputDevice(
-        InputDeviceDescriptor descriptor,
-        FakeInputOpenOptions options,
-        ManualInputClock clock,
-        IInputDiagnosticSink? diagnostics = null)
-        : base(descriptor, clock, diagnostics)
-    {
-        _queue = new FakeBoundedInputQueue<string>(options.EffectiveDeliveryOptions);
-    }
+    private readonly FakeBoundedInputQueue<string> _queue = new(options.EffectiveDeliveryOptions);
 
     public InputDeliveryMetrics DeliveryMetrics => _queue.Metrics;
 
@@ -31,10 +22,7 @@ public sealed class FakeInputDevice : InputDevice
         return _queue.TryDequeue(out value);
     }
 
-    public void SimulateRemoval()
-    {
-        MarkUnavailable(new InputFault(InputErrorCategory.DeviceRemoved, "Fake input device was removed."));
-    }
+    public void SimulateRemoval() => MarkUnavailable(new InputFault(InputErrorCategory.DeviceRemoved, "Fake input device was removed."));
 
     public override ValueTask OpenAsync(CancellationToken cancellationToken = default)
     {

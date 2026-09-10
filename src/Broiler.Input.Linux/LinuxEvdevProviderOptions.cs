@@ -2,11 +2,8 @@ using System;
 
 namespace Broiler.Input.Linux;
 
-public sealed record LinuxEvdevProviderOptions(
-    string InputDirectory = LinuxEventDeviceAccessProbe.DefaultInputDirectory,
-    string SysfsInputRoot = "/sys/class/input",
-    bool AcknowledgeRawBackgroundInput = false,
-    int PollTimeoutMilliseconds = 50)
+public sealed record LinuxEvdevProviderOptions(string InputDirectory = LinuxEventDeviceAccessProbe.DefaultInputDirectory,
+    string SysfsInputRoot = "/sys/class/input", bool AcknowledgeRawBackgroundInput = false, int PollTimeoutMilliseconds = 50)
 {
     public void ValidateRawAccess()
     {

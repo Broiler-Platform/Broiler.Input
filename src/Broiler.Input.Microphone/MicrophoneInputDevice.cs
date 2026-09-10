@@ -1,5 +1,4 @@
 using System;
-using Broiler.Input;
 
 namespace Broiler.Input.Microphone;
 
@@ -8,11 +7,8 @@ public abstract class MicrophoneInputDevice : InputDevice
     private MicrophoneCaptureState _captureState = MicrophoneCaptureState.Stopped;
     private MicrophoneCaptureStatistics _captureStatistics;
 
-    protected MicrophoneInputDevice(
-        InputDeviceDescriptor descriptor,
-        IInputClock? clock = null,
-        IInputDiagnosticSink? diagnostics = null)
-        : base(descriptor, clock, diagnostics)
+    protected MicrophoneInputDevice(InputDeviceDescriptor descriptor, IInputClock? clock = null, 
+        IInputDiagnosticSink? diagnostics = null) : base(descriptor, clock, diagnostics)
     {
         if (descriptor.Kind != InputKind.Microphone)
             throw new ArgumentException("Microphone devices require a microphone descriptor.", nameof(descriptor));
@@ -34,10 +30,7 @@ public abstract class MicrophoneInputDevice : InputDevice
         BufferReady?.Invoke(new MicrophoneBufferReadyEvent(header ?? NextEventHeader(buffer.Timestamp), buffer));
     }
 
-    protected void SetCaptureStatistics(MicrophoneCaptureStatistics statistics)
-    {
-        _captureStatistics = statistics;
-    }
+    protected void SetCaptureStatistics(MicrophoneCaptureStatistics statistics) => _captureStatistics = statistics;
 
     protected void TransitionCaptureTo(MicrophoneCaptureState state, InputFault? fault = null)
     {

@@ -54,6 +54,5 @@ public static class AndroidMotionEventConstants
     public static int MaskedAction(int packedAction) => packedAction & ActionMask;
 
     /// <summary>Extracts the pointer index from a packed <c>getAction()</c> value.</summary>
-    public static int PointerIndex(int packedAction) =>
-        (packedAction & ActionPointerIndexMask) >> ActionPointerIndexShift;
+    public static int PointerIndex(int packedAction) => (packedAction & ActionPointerIndexMask) >> ActionPointerIndexShift;
 }

@@ -20,24 +20,13 @@ namespace Broiler.Input.Pen.Android;
 /// Hover is delivered from <c>onHoverEvent</c>, whose <c>ACTION_HOVER_*</c> actions report a stylus
 /// detected above the surface.
 /// </remarks>
-public sealed class AndroidPenInputDevice : PenInputDevice, IAndroidInputDevice
+public sealed class AndroidPenInputDevice(InputDeviceDescriptor descriptor, AndroidCoordinateSpace coordinateSpace,
+    AndroidUptimeInputClock clock, PenOpenOptions? options = null) : PenInputDevice(descriptor, clock), IAndroidInputDevice
 {
-    private readonly AndroidCoordinateSpace _coordinateSpace;
-    private readonly AndroidUptimeInputClock _clock;
-    private readonly PenOpenOptions _options;
+    private readonly AndroidCoordinateSpace _coordinateSpace = coordinateSpace ?? throw new ArgumentNullException(nameof(coordinateSpace));
+    private readonly AndroidUptimeInputClock _clock = clock ?? throw new ArgumentNullException(nameof(clock));
+    private readonly PenOpenOptions _options = options ?? new PenOpenOptions();
     private bool _isContactDown;
-
-    public AndroidPenInputDevice(
-        InputDeviceDescriptor descriptor,
-        AndroidCoordinateSpace coordinateSpace,
-        AndroidUptimeInputClock clock,
-        PenOpenOptions? options = null)
-        : base(descriptor, clock)
-    {
-        _coordinateSpace = coordinateSpace ?? throw new ArgumentNullException(nameof(coordinateSpace));
-        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
-        _options = options ?? new PenOpenOptions();
-    }
 
     /// <summary>True while the pen tip is in contact with the surface.</summary>
     public bool IsContactDown => _isContactDown;
@@ -98,21 +87,12 @@ public sealed class AndroidPenInputDevice : PenInputDevice, IAndroidInputDevice
         if (!_options.CancelContactsOnCaptureLoss || !_isContactDown)
             return false;
 
-        EmitDiagnostic(
-            InputDiagnosticLevel.Information,
-            "input.pen.capture-lost",
-            new Dictionary<string, string> { ["reason"] = reason });
+        EmitDiagnostic(InputDiagnosticLevel.Information, "input.pen.capture-lost", new Dictionary<string, string> { ["reason"] = reason });
 
         _isContactDown = false;
-        RaiseContactChanged(new PenContactEvent(
-            NextEventHeader(_clock.GetTimestamp()),
-            InputPoint.ClientDeviceIndependentPixels(0, 0),
-            PenContactState.Cancelled,
-            PenButtons.None,
-            0,
-            0,
-            0,
-            InputEventSource.Raw));
+        RaiseContactChanged(new PenContactEvent(NextEventHeader(_clock.GetTimestamp()), InputPoint.ClientDeviceIndependentPixels(0, 0),
+            PenContactState.Cancelled, PenButtons.None, 0, 0, 0, InputEventSource.Raw));
+
         return true;
     }
 
@@ -160,19 +140,13 @@ public sealed class AndroidPenInputDevice : PenInputDevice, IAndroidInputDevice
 
     private void Raise(AndroidMotionSample sample, AndroidPointerSample pointer, PenContactState state)
     {
-        (double tiltX, double tiltY) = _options.ReportTilt
-            ? AndroidPenTilt.ToDegrees(pointer.TiltRadians, pointer.OrientationRadians)
-            : (0, 0);
+        (double tiltX, double tiltY) = _options.ReportTilt ?
+            AndroidPenTilt.ToDegrees(pointer.TiltRadians, pointer.OrientationRadians) : (0, 0);
 
-        RaiseContactChanged(new PenContactEvent(
-            NextEventHeader(sample.Timestamp),
-            _coordinateSpace.ToInputPoint(pointer.X, pointer.Y),
-            state,
-            ToPenButtons(sample.ButtonState, pointer.ToolType),
-            ClampPressure(pointer.Pressure),
-            tiltX,
-            tiltY,
-            InputEventSource.Raw));
+        RaiseContactChanged(new PenContactEvent(NextEventHeader(sample.Timestamp),
+            _coordinateSpace.ToInputPoint(pointer.X, pointer.Y), state,
+            ToPenButtons(sample.ButtonState, pointer.ToolType), ClampPressure(pointer.Pressure),
+            tiltX, tiltY, InputEventSource.Raw));
     }
 
     /// <summary>

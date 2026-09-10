@@ -21,23 +21,12 @@ public sealed class WindowsRawMouseBuffer
         _capacity = capacity;
     }
 
-    public WindowsRawMouseBufferMetrics Metrics => new(
-        _acceptedCount,
-        _dequeuedCount,
-        _coalescedCount,
-        _droppedCount,
-        _queue.Count);
+    public WindowsRawMouseBufferMetrics Metrics => new(_acceptedCount, _dequeuedCount, _coalescedCount, _droppedCount, _queue.Count);
 
     public void Enqueue(WindowsRawMouseReport report)
     {
-        WindowsRawMouseBufferedEvent inputEvent = new(
-            report.Device,
-            report.Timestamp,
-            report.DeltaX,
-            report.DeltaY,
-            report.ButtonFlags,
-            report.ButtonData,
-            report.IsAbsolute);
+        WindowsRawMouseBufferedEvent inputEvent = new(report.Device, report.Timestamp, report.DeltaX, report.DeltaY,
+            report.ButtonFlags, report.ButtonData, report.IsAbsolute);
 
         _acceptedCount++;
 
@@ -67,17 +56,16 @@ public sealed class WindowsRawMouseBuffer
     }
 
     private static bool CanCoalesce(WindowsRawMouseBufferedEvent inputEvent) =>
-        inputEvent.ButtonFlags == 0 &&
-        inputEvent.ButtonData == 0 &&
-        !inputEvent.IsAbsolute;
+        inputEvent.ButtonFlags == 0 && inputEvent.ButtonData == 0 && !inputEvent.IsAbsolute;
 
     private bool TryCoalesceTail(WindowsRawMouseBufferedEvent inputEvent)
     {
         if (_queue.Count == 0)
             return false;
 
-        WindowsRawMouseBufferedEvent[] snapshot = _queue.ToArray();
+        WindowsRawMouseBufferedEvent[] snapshot = [.. _queue];
         WindowsRawMouseBufferedEvent tail = snapshot[^1];
+        
         if (tail.Device != inputEvent.Device || !CanCoalesce(tail))
             return false;
 

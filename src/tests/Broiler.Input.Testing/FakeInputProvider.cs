@@ -46,19 +46,17 @@ public sealed class FakeInputProvider : IInputProvider<FakeInputDevice, FakeInpu
         return true;
     }
 
-    public ValueTask<IReadOnlyList<InputDeviceDescriptor>> GetDevicesAsync(
-        CancellationToken cancellationToken = default)
+    public ValueTask<IReadOnlyList<InputDeviceDescriptor>> GetDevicesAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return ValueTask.FromResult<IReadOnlyList<InputDeviceDescriptor>>(_descriptors.ToArray());
     }
 
-    public ValueTask<FakeInputDevice> OpenAsync(
-        InputDeviceDescriptor descriptor,
-        FakeInputOpenOptions options,
+    public ValueTask<FakeInputDevice> OpenAsync(InputDeviceDescriptor descriptor,FakeInputOpenOptions options,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        
         ArgumentNullException.ThrowIfNull(descriptor);
         ArgumentNullException.ThrowIfNull(options);
 

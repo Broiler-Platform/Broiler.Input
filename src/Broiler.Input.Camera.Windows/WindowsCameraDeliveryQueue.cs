@@ -1,19 +1,12 @@
 using System;
 using System.Collections.Generic;
-using Broiler.Input;
-using Broiler.Input.Camera;
 
 namespace Broiler.Input.Camera.Windows;
 
-internal sealed class WindowsCameraDeliveryQueue
+internal sealed class WindowsCameraDeliveryQueue(InputDeliveryOptions options)
 {
     private readonly Queue<CameraFrameLease> _queue = new();
-    private readonly InputDeliveryOptions _options;
-
-    public WindowsCameraDeliveryQueue(InputDeliveryOptions options)
-    {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-    }
+    private readonly InputDeliveryOptions _options = options ?? throw new ArgumentNullException(nameof(options));
 
     public long DroppedNewestCount { get; private set; }
 
@@ -46,8 +39,10 @@ internal sealed class WindowsCameraDeliveryQueue
 
             case InputDeliveryOverflowPolicy.KeepLatest:
                 DroppedOldestCount += _queue.Count;
+
                 while (_queue.Count > 0)
                     _queue.Dequeue().Dispose();
+                
                 _queue.Enqueue(lease);
                 return true;
 

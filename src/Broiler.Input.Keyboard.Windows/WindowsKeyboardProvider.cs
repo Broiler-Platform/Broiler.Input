@@ -6,16 +6,13 @@ using Broiler.Input.Windows;
 
 namespace Broiler.Input.Keyboard.Windows;
 
-public sealed class WindowsKeyboardProvider : IKeyboardInputProvider, IInputDeviceWatcher, IWindowsInputMessageSink
+public sealed class WindowsKeyboardProvider(IInputClock? clock = null) : IKeyboardInputProvider, IInputDeviceWatcher, IWindowsInputMessageSink
 {
     private const int RawInputDeviceArrival = 1;
     private const int RawInputDeviceRemoval = 2;
 
-    private static readonly InputDeviceDescriptor s_descriptor = new(
-        InputDeviceId.FromOpaqueValue("windows:keyboard:semantic-message-source"),
-        InputKind.Keyboard,
-        "Windows keyboard message source",
-        InputDeviceAvailability.Available,
+    private static readonly InputDeviceDescriptor s_descriptor = new(InputDeviceId.FromOpaqueValue("windows:keyboard:semantic-message-source"),
+        InputKind.Keyboard, "Windows keyboard message source", InputDeviceAvailability.Available,
         [
             new InputCapability("delivery", "semantic-window-messages"),
             new InputCapability("raw-input-registration", "explicit-lease"),
@@ -23,12 +20,7 @@ public sealed class WindowsKeyboardProvider : IKeyboardInputProvider, IInputDevi
             new InputCapability("hot-plug", "WM_INPUT_DEVICE_CHANGE"),
         ]);
 
-    private readonly IInputClock _clock;
-
-    public WindowsKeyboardProvider(IInputClock? clock = null)
-    {
-        _clock = clock ?? WindowsInputClock.Shared;
-    }
+    private readonly IInputClock _clock = clock ?? WindowsInputClock.Shared;
 
     public event Action<InputDeviceChange>? DeviceChanged;
 
@@ -37,23 +29,17 @@ public sealed class WindowsKeyboardProvider : IKeyboardInputProvider, IInputDevi
         if (message.Message != WindowsMessageIds.InputDeviceChange)
             return false;
 
-        DeviceChanged?.Invoke(new InputDeviceChange(
-            ChangeKindFromWParam(message.WParam),
-            s_descriptor,
-            message.Timestamp));
+        DeviceChanged?.Invoke(new InputDeviceChange(ChangeKindFromWParam(message.WParam), s_descriptor, message.Timestamp));
         return false;
     }
 
-    public ValueTask<IReadOnlyList<InputDeviceDescriptor>> GetDevicesAsync(
-        CancellationToken cancellationToken = default)
+    public ValueTask<IReadOnlyList<InputDeviceDescriptor>> GetDevicesAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return ValueTask.FromResult<IReadOnlyList<InputDeviceDescriptor>>([s_descriptor]);
     }
 
-    public async ValueTask<KeyboardInputDevice> OpenAsync(
-        InputDeviceDescriptor descriptor,
-        KeyboardOpenOptions options,
+    public async ValueTask<KeyboardInputDevice> OpenAsync(InputDeviceDescriptor descriptor, KeyboardOpenOptions options,
         CancellationToken cancellationToken = default)
     {
         WindowsKeyboardInputDevice device = CreateDevice(descriptor, options);
@@ -61,8 +47,7 @@ public sealed class WindowsKeyboardProvider : IKeyboardInputProvider, IInputDevi
         return device;
     }
 
-    public async ValueTask<WindowsKeyboardInputDevice> OpenDefaultAsync(
-        KeyboardOpenOptions? options = null,
+    public async ValueTask<WindowsKeyboardInputDevice> OpenDefaultAsync(KeyboardOpenOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         WindowsKeyboardInputDevice device = CreateDevice(s_descriptor, options ?? new KeyboardOpenOptions());
@@ -70,18 +55,14 @@ public sealed class WindowsKeyboardProvider : IKeyboardInputProvider, IInputDevi
         return device;
     }
 
-    public WindowsRawInputRegistrationLease RegisterRawInput(
-        IntPtr targetWindow,
-        WindowsRawInputRegistrationCoordinator coordinator,
-        WindowsRawInputRegistrationOptions? options = null)
+    public static WindowsRawInputRegistrationLease RegisterRawInput(IntPtr targetWindow,
+        WindowsRawInputRegistrationCoordinator coordinator, WindowsRawInputRegistrationOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(coordinator);
         return coordinator.RegisterKeyboard(targetWindow, options);
     }
 
-    private WindowsKeyboardInputDevice CreateDevice(
-        InputDeviceDescriptor descriptor,
-        KeyboardOpenOptions options)
+    private WindowsKeyboardInputDevice CreateDevice(InputDeviceDescriptor descriptor, KeyboardOpenOptions options)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         ArgumentNullException.ThrowIfNull(options);

@@ -11,6 +11,4 @@ namespace Broiler.Input.Text;
 /// Emit <see cref="TextCompositionState.Cancelled"/> for an in-flight composition when the editor
 /// loses focus, rather than leaving a stale pre-edit in the document.
 /// </param>
-public sealed record TextInputOpenOptions(
-    bool ReportComposition = true,
-    bool CancelCompositionOnFocusLoss = true);
+public sealed record TextInputOpenOptions(bool ReportComposition = true, bool CancelCompositionOnFocusLoss = true);

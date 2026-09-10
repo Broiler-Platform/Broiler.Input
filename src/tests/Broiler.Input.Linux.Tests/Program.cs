@@ -188,10 +188,10 @@ internal static class Program
         translator.Process(EventAt(LinuxEvdevConstants.EvSyn, LinuxEvdevConstants.SynReport, 0, 20_000), Header, options, output);
         translator.Process(EventAt(LinuxEvdevConstants.EvKey, LinuxEvdevConstants.BtnTouch, 0, 100_000), Header, options, output);
 
-        MouseButtonEvent[] buttons = output
+        MouseButtonEvent[] buttons = [.. output
             .Where(input => input.Kind == LinuxMouseTranslatedEventKind.Button)
-            .Select(input => input.Button ?? throw new InvalidOperationException("Button event missing."))
-            .ToArray();
+            .Select(input => input.Button ?? throw new InvalidOperationException("Button event missing."))];
+
         AssertEqual(2, buttons.Length, "A tap should emit a left button down and up.");
         AssertEqual(MouseButtonTransition.Down, buttons[0].Transition, "Tap begins with a left button down.");
         AssertEqual(MouseButtonTransition.Up, buttons[1].Transition, "Tap ends with a left button up.");
@@ -304,9 +304,7 @@ internal static class Program
 
         foreach (Assembly assembly in assemblies)
         {
-            string[] references = assembly.GetReferencedAssemblies()
-                .Select(static reference => reference.Name ?? string.Empty)
-                .ToArray();
+            string[] references = [.. assembly.GetReferencedAssemblies().Select(static reference => reference.Name ?? string.Empty)];
             AssertFalse(references.Any(static reference =>
                     reference.Contains("Broiler.Graphics", StringComparison.Ordinal) ||
                     reference.Contains("Windows", StringComparison.OrdinalIgnoreCase)),
@@ -451,11 +449,8 @@ internal static class Program
             Root = root;
             InputDirectory = inputDirectory;
             SysfsRoot = sysfsRoot;
-            Options = new LinuxEvdevProviderOptions(
-                inputDirectory,
-                sysfsRoot,
-                AcknowledgeRawBackgroundInput: true,
-                PollTimeoutMilliseconds: 10);
+            Options = new LinuxEvdevProviderOptions(inputDirectory, sysfsRoot,
+                AcknowledgeRawBackgroundInput: true, PollTimeoutMilliseconds: 10);
         }
 
         public string Root { get; }
@@ -478,46 +473,27 @@ internal static class Program
 
         public void AddKeyboard(string eventName, string displayName)
         {
-            AddEventDevice(
-                eventName,
-                displayName,
-                [LinuxEvdevConstants.EvKey],
-                [LinuxEvdevConstants.KeyA, LinuxEvdevConstants.KeyEnter, LinuxEvdevConstants.KeyLeftShift],
-                [],
-                []);
+            AddEventDevice(eventName, displayName, [LinuxEvdevConstants.EvKey],
+                [LinuxEvdevConstants.KeyA, LinuxEvdevConstants.KeyEnter, LinuxEvdevConstants.KeyLeftShift], [], []);
         }
 
         public void AddMouse(string eventName, string displayName)
         {
-            AddEventDevice(
-                eventName,
-                displayName,
-                [LinuxEvdevConstants.EvKey, LinuxEvdevConstants.EvRel],
+            AddEventDevice(eventName, displayName, [LinuxEvdevConstants.EvKey, LinuxEvdevConstants.EvRel],
                 [LinuxEvdevConstants.BtnLeft, LinuxEvdevConstants.BtnRight, LinuxEvdevConstants.BtnMiddle],
-                [LinuxEvdevConstants.RelX, LinuxEvdevConstants.RelY, LinuxEvdevConstants.RelWheel, LinuxEvdevConstants.RelWheelHiRes],
-                []);
+                [LinuxEvdevConstants.RelX, LinuxEvdevConstants.RelY, LinuxEvdevConstants.RelWheel, LinuxEvdevConstants.RelWheelHiRes], []);
         }
 
         public void AddTouchpad(string eventName, string displayName)
         {
-            AddEventDevice(
-                eventName,
-                displayName,
-                [LinuxEvdevConstants.EvKey, LinuxEvdevConstants.EvAbs],
+            AddEventDevice(eventName, displayName, [LinuxEvdevConstants.EvKey, LinuxEvdevConstants.EvAbs],
                 [LinuxEvdevConstants.BtnLeft, LinuxEvdevConstants.BtnTouch, LinuxEvdevConstants.BtnToolFinger],
-                [],
-                [LinuxEvdevConstants.AbsX, LinuxEvdevConstants.AbsY]);
+                [], [LinuxEvdevConstants.AbsX, LinuxEvdevConstants.AbsY]);
         }
 
         public void AddNoise(string eventName, string displayName)
         {
-            AddEventDevice(
-                eventName,
-                displayName,
-                [LinuxEvdevConstants.EvRel],
-                [],
-                [LinuxEvdevConstants.RelX],
-                []);
+            AddEventDevice(eventName, displayName, [LinuxEvdevConstants.EvRel], [], [LinuxEvdevConstants.RelX], []);
         }
 
         public void Dispose()
@@ -552,7 +528,7 @@ internal static class Program
 
         private static string Bitmap(IEnumerable<int> bits)
         {
-            int[] values = bits.ToArray();
+            int[] values = [.. bits];
             if (values.Length == 0)
                 return "0";
 

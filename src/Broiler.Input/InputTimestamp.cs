@@ -6,6 +6,5 @@ public readonly record struct InputTimestamp(long Ticks, long Frequency, string 
 {
     public bool IsValid => Frequency > 0;
 
-    public TimeSpan ToElapsedTime() =>
-        Frequency <= 0 ? TimeSpan.Zero : TimeSpan.FromSeconds((double)Ticks / Frequency);
+    public TimeSpan ToElapsedTime() => Frequency <= 0 ? TimeSpan.Zero : TimeSpan.FromSeconds((double)Ticks / Frequency);
 }

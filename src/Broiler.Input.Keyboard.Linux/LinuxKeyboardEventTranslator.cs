@@ -61,9 +61,7 @@ public sealed class LinuxKeyboardEventTranslator
 
     private readonly HashSet<int> _downKeys = [];
 
-    public bool TryTranslate(
-        in LinuxInputEvent inputEvent,
-        Func<InputTimestamp, InputEventHeader> createHeader,
+    public bool TryTranslate(in LinuxInputEvent inputEvent, Func<InputTimestamp, InputEventHeader> createHeader,
         out KeyboardKeyEvent keyboardEvent)
     {
         ArgumentNullException.ThrowIfNull(createHeader);
@@ -86,18 +84,10 @@ public sealed class LinuxKeyboardEventTranslator
         else
             _downKeys.Add(code);
 
-        keyboardEvent = new KeyboardKeyEvent(
-            createHeader(inputEvent.Timestamp),
-            KeyFromEvdevCode(inputEvent.Code),
-            transition,
-            ReadModifiers(),
-            inputEvent.Code,
-            inputEvent.Code,
-            inputEvent.Value == 2 ? 2 : 1,
-            IsExtended(inputEvent.Code),
-            wasDown,
-            LocationFromEvdevCode(inputEvent.Code),
-            InputEventSource.Raw);
+        keyboardEvent = new KeyboardKeyEvent(createHeader(inputEvent.Timestamp), KeyFromEvdevCode(inputEvent.Code),
+            transition, ReadModifiers(), inputEvent.Code, inputEvent.Code, inputEvent.Value == 2 ? 2 : 1, IsExtended(inputEvent.Code),
+            wasDown, LocationFromEvdevCode(inputEvent.Code), InputEventSource.Raw);
+
         return true;
     }
 
@@ -107,18 +97,25 @@ public sealed class LinuxKeyboardEventTranslator
 
         if (_downKeys.Contains(LinuxEvdevConstants.KeyLeftShift))
             modifiers |= KeyboardModifierState.Shift | KeyboardModifierState.LeftShift;
+
         if (_downKeys.Contains(LinuxEvdevConstants.KeyRightShift))
             modifiers |= KeyboardModifierState.Shift | KeyboardModifierState.RightShift;
+
         if (_downKeys.Contains(LinuxEvdevConstants.KeyLeftCtrl))
             modifiers |= KeyboardModifierState.Control | KeyboardModifierState.LeftControl;
+
         if (_downKeys.Contains(LinuxEvdevConstants.KeyRightCtrl))
             modifiers |= KeyboardModifierState.Control | KeyboardModifierState.RightControl;
+
         if (_downKeys.Contains(LinuxEvdevConstants.KeyLeftAlt))
             modifiers |= KeyboardModifierState.Alt | KeyboardModifierState.LeftAlt;
+
         if (_downKeys.Contains(LinuxEvdevConstants.KeyRightAlt))
             modifiers |= KeyboardModifierState.Alt | KeyboardModifierState.RightAlt;
+
         if (_downKeys.Contains(LinuxEvdevConstants.KeyLeftMeta))
             modifiers |= KeyboardModifierState.LeftWindows;
+
         if (_downKeys.Contains(LinuxEvdevConstants.KeyRightMeta))
             modifiers |= KeyboardModifierState.RightWindows;
 
@@ -206,18 +203,24 @@ public sealed class LinuxKeyboardEventTranslator
     private static KeyboardKeyLocation LocationFromEvdevCode(int code) =>
         code switch
         {
-            LinuxEvdevConstants.KeyLeftShift or LinuxEvdevConstants.KeyLeftCtrl or LinuxEvdevConstants.KeyLeftAlt or LinuxEvdevConstants.KeyLeftMeta => KeyboardKeyLocation.Left,
-            LinuxEvdevConstants.KeyRightShift or LinuxEvdevConstants.KeyRightCtrl or LinuxEvdevConstants.KeyRightAlt or LinuxEvdevConstants.KeyRightMeta => KeyboardKeyLocation.Right,
+            LinuxEvdevConstants.KeyLeftShift or LinuxEvdevConstants.KeyLeftCtrl or
+            LinuxEvdevConstants.KeyLeftAlt or LinuxEvdevConstants.KeyLeftMeta => KeyboardKeyLocation.Left,
+
+            LinuxEvdevConstants.KeyRightShift or LinuxEvdevConstants.KeyRightCtrl or
+            LinuxEvdevConstants.KeyRightAlt or LinuxEvdevConstants.KeyRightMeta => KeyboardKeyLocation.Right,
+
             >= LinuxEvdevConstants.KeyKp7 and <= LinuxEvdevConstants.KeyKpDot => KeyboardKeyLocation.Numpad,
-            LinuxEvdevConstants.KeyKpAsterisk or LinuxEvdevConstants.KeyKpEnter or LinuxEvdevConstants.KeyKpSlash => KeyboardKeyLocation.Numpad,
+
+            LinuxEvdevConstants.KeyKpAsterisk or LinuxEvdevConstants.KeyKpEnter or LinuxEvdevConstants.KeyKpSlash 
+            => KeyboardKeyLocation.Numpad,
+
             _ => KeyboardKeyLocation.Standard,
         };
 
     private static bool IsExtended(int code) =>
-        code is LinuxEvdevConstants.KeyRightCtrl or LinuxEvdevConstants.KeyRightAlt or
-            LinuxEvdevConstants.KeyKpEnter or LinuxEvdevConstants.KeyKpSlash or
-            LinuxEvdevConstants.KeyHome or LinuxEvdevConstants.KeyUp or LinuxEvdevConstants.KeyPageUp or
-            LinuxEvdevConstants.KeyLeft or LinuxEvdevConstants.KeyRight or
-            LinuxEvdevConstants.KeyEnd or LinuxEvdevConstants.KeyDown or LinuxEvdevConstants.KeyPageDown or
-            LinuxEvdevConstants.KeyInsert or LinuxEvdevConstants.KeyDelete;
+        code is LinuxEvdevConstants.KeyRightCtrl or LinuxEvdevConstants.KeyRightAlt or LinuxEvdevConstants.KeyKpEnter or
+                LinuxEvdevConstants.KeyKpSlash or LinuxEvdevConstants.KeyHome or LinuxEvdevConstants.KeyUp or
+                LinuxEvdevConstants.KeyPageUp or LinuxEvdevConstants.KeyLeft or LinuxEvdevConstants.KeyRight or
+                LinuxEvdevConstants.KeyEnd or LinuxEvdevConstants.KeyDown or LinuxEvdevConstants.KeyPageDown or
+                LinuxEvdevConstants.KeyInsert or LinuxEvdevConstants.KeyDelete;
 }

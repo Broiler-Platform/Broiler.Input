@@ -5,26 +5,16 @@ using System.Threading.Tasks;
 
 namespace Broiler.Input;
 
-public abstract class InputDevice : IDisposable, IAsyncDisposable
+public abstract class InputDevice(InputDeviceDescriptor descriptor, IInputClock? clock = null,
+    IInputDiagnosticSink? diagnostics = null) : IDisposable, IAsyncDisposable
 {
-    private readonly IInputClock _clock;
+    private readonly IInputClock _clock = clock ?? StopwatchInputClock.Shared;
     private long _sequenceNumber;
     private bool _disposed;
 
-    protected InputDevice(
-        InputDeviceDescriptor descriptor,
-        IInputClock? clock = null,
-        IInputDiagnosticSink? diagnostics = null)
-    {
-        Descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
-        _clock = clock ?? StopwatchInputClock.Shared;
-        Diagnostics = diagnostics ?? NullInputDiagnosticSink.Shared;
-        State = InputDeviceState.Discovered;
-    }
-
     public event EventHandler<InputDeviceStateChangedEventArgs>? StateChanged;
 
-    public InputDeviceDescriptor Descriptor { get; }
+    public InputDeviceDescriptor Descriptor { get; } = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
 
     public InputDeviceId Id => Descriptor.Id;
 
@@ -32,13 +22,13 @@ public abstract class InputDevice : IDisposable, IAsyncDisposable
 
     public string DisplayName => Descriptor.DisplayName;
 
-    public InputDeviceState State { get; private set; }
+    public InputDeviceState State { get; private set; } = InputDeviceState.Discovered;
 
     public InputFault? LastFault { get; private set; }
 
     protected IInputClock Clock => _clock;
 
-    protected IInputDiagnosticSink Diagnostics { get; }
+    protected IInputDiagnosticSink Diagnostics { get; } = diagnostics ?? NullInputDiagnosticSink.Shared;
 
     protected bool CanDeliverInput => !_disposed && State == InputDeviceState.Running;
 
@@ -52,6 +42,7 @@ public abstract class InputDevice : IDisposable, IAsyncDisposable
 
         TransitionTo(InputDeviceState.Opening);
         TransitionTo(InputDeviceState.Open);
+
         return ValueTask.CompletedTask;
     }
 
@@ -68,6 +59,7 @@ public abstract class InputDevice : IDisposable, IAsyncDisposable
 
         TransitionTo(InputDeviceState.Starting);
         TransitionTo(InputDeviceState.Running);
+
         return ValueTask.CompletedTask;
     }
 
@@ -81,6 +73,7 @@ public abstract class InputDevice : IDisposable, IAsyncDisposable
 
         TransitionTo(InputDeviceState.Stopping);
         TransitionTo(InputDeviceState.Open);
+
         return ValueTask.CompletedTask;
     }
 
@@ -141,9 +134,8 @@ public abstract class InputDevice : IDisposable, IAsyncDisposable
 
         InputDeviceState previous = State;
         State = state;
-        EmitDiagnostic(
-            InputDiagnosticLevel.Information,
-            "input.device.state",
+
+        EmitDiagnostic(InputDiagnosticLevel.Information, "input.device.state",
             new Dictionary<string, string>
             {
                 ["previous"] = previous.ToString(),
@@ -155,9 +147,8 @@ public abstract class InputDevice : IDisposable, IAsyncDisposable
     protected void SetFault(InputFault fault)
     {
         LastFault = fault ?? throw new ArgumentNullException(nameof(fault));
-        EmitDiagnostic(
-            InputDiagnosticLevel.Error,
-            "input.device.fault",
+
+        EmitDiagnostic(InputDiagnosticLevel.Error, "input.device.fault",
             new Dictionary<string, string>
             {
                 ["category"] = fault.Category.ToString(),
@@ -170,11 +161,10 @@ public abstract class InputDevice : IDisposable, IAsyncDisposable
     protected void MarkUnavailable(InputFault? fault = null)
     {
         LastFault = fault;
+
         if (fault is not null)
         {
-            EmitDiagnostic(
-                InputDiagnosticLevel.Warning,
-                "input.device.unavailable",
+            EmitDiagnostic(InputDiagnosticLevel.Warning, "input.device.unavailable",
                 new Dictionary<string, string>
                 {
                     ["category"] = fault.Category.ToString(),
@@ -186,24 +176,9 @@ public abstract class InputDevice : IDisposable, IAsyncDisposable
         TransitionTo(InputDeviceState.Unavailable);
     }
 
-    protected void EmitDiagnostic(
-        InputDiagnosticLevel level,
-        string name,
-        IReadOnlyDictionary<string, string>? properties = null,
-        InputErrorCategory? errorCategory = null)
-    {
-        Diagnostics.Write(new InputDiagnosticEvent(
-            level,
-            name,
-            _clock.GetTimestamp(),
-            Id,
-            errorCategory,
-            properties));
-    }
+    protected void EmitDiagnostic(InputDiagnosticLevel level, string name,
+        IReadOnlyDictionary<string, string>? properties = null, InputErrorCategory? errorCategory = null) => 
+            Diagnostics.Write(new InputDiagnosticEvent(level, name, _clock.GetTimestamp(), Id, errorCategory, properties));
 
-    protected void ThrowIfDisposed()
-    {
-        if (_disposed)
-            throw new ObjectDisposedException(GetType().FullName);
-    }
+    protected void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
 }

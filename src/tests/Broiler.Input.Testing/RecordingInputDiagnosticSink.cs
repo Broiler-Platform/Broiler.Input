@@ -8,8 +8,5 @@ public sealed class RecordingInputDiagnosticSink : IInputDiagnosticSink
 
     public IReadOnlyList<InputDiagnosticEvent> Events => _events;
 
-    public void Write(InputDiagnosticEvent inputEvent)
-    {
-        _events.Add(inputEvent);
-    }
+    public void Write(InputDiagnosticEvent inputEvent) => _events.Add(inputEvent);
 }

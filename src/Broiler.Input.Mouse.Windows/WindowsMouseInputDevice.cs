@@ -3,7 +3,8 @@ using Broiler.Input.Windows;
 
 namespace Broiler.Input.Mouse.Windows;
 
-public sealed class WindowsMouseInputDevice : MouseInputDevice, IWindowsInputMessageSink
+public sealed class WindowsMouseInputDevice(InputDeviceDescriptor descriptor, MouseOpenOptions? options = null, IInputClock? clock = null,
+    WindowsMouseMessageOptions? messageOptions = null) : MouseInputDevice(descriptor, clock ?? WindowsInputClock.Shared), IWindowsInputMessageSink
 {
     private const int MkLeftButton = 0x0001;
     private const int MkRightButton = 0x0002;
@@ -22,19 +23,8 @@ public sealed class WindowsMouseInputDevice : MouseInputDevice, IWindowsInputMes
     private const int XButton2 = 0x0002;
     private const int WheelDelta = 120;
 
-    private readonly MouseOpenOptions _options;
-    private readonly WindowsMouseMessageOptions _messageOptions;
-
-    public WindowsMouseInputDevice(
-        InputDeviceDescriptor descriptor,
-        MouseOpenOptions? options = null,
-        IInputClock? clock = null,
-        WindowsMouseMessageOptions? messageOptions = null)
-        : base(descriptor, clock ?? WindowsInputClock.Shared)
-    {
-        _options = options ?? new MouseOpenOptions();
-        _messageOptions = messageOptions ?? new WindowsMouseMessageOptions();
-    }
+    private readonly MouseOpenOptions _options = options ?? new MouseOpenOptions();
+    private readonly WindowsMouseMessageOptions _messageOptions = messageOptions ?? new WindowsMouseMessageOptions();
 
     public bool ProcessMessage(in WindowsInputMessage message) => ProcessMessage(message, _messageOptions);
 
@@ -103,44 +93,25 @@ public sealed class WindowsMouseInputDevice : MouseInputDevice, IWindowsInputMes
         }
     }
 
-    private void DispatchButton(
-        in WindowsInputMessage message,
-        WindowsMouseMessageOptions options,
-        MouseButtonTransition transition)
+    private void DispatchButton(in WindowsInputMessage message, WindowsMouseMessageOptions options, MouseButtonTransition transition)
     {
-        RaiseButtonChanged(new MouseButtonEvent(
-            NextEventHeader(message.Timestamp),
-            PositionFromLParam(message.LParam, options),
-            ButtonsFromWParam(message.WParam),
-            ButtonFromMessage(message.Message, message.WParam),
-            transition,
-            InputEventSource.Semantic,
+        RaiseButtonChanged(new MouseButtonEvent(NextEventHeader(message.Timestamp), PositionFromLParam(message.LParam, options),
+            ButtonsFromWParam(message.WParam), ButtonFromMessage(message.Message, message.WParam), transition, InputEventSource.Semantic,
             ModifiersFromWParam(message.WParam)));
     }
 
-    private void DispatchWheel(
-        in WindowsInputMessage message,
-        WindowsMouseMessageOptions options,
-        MouseWheelAxis axis)
+    private void DispatchWheel(in WindowsInputMessage message, WindowsMouseMessageOptions options, MouseWheelAxis axis)
     {
         double delta = SignedHighWord(message.WParam) / (double)WheelDelta;
 
-        RaiseWheelChanged(new MouseWheelEvent(
-            NextEventHeader(message.Timestamp),
-            WheelPositionFromLParam(message, options),
-            ButtonsFromWParam(message.WParam),
-            axis,
-            delta,
-            InputEventSource.Semantic,
-            ModifiersFromWParam(message.WParam)));
+        RaiseWheelChanged(new MouseWheelEvent(NextEventHeader(message.Timestamp), WheelPositionFromLParam(message, options),
+            ButtonsFromWParam(message.WParam), axis, delta, InputEventSource.Semantic, ModifiersFromWParam(message.WParam)));
     }
 
     private static InputPoint PositionFromLParam(IntPtr lParam, WindowsMouseMessageOptions options) =>
         ToPoint(SignedLowWord(lParam), SignedHighWord(lParam), options);
 
-    private static InputPoint WheelPositionFromLParam(
-        in WindowsInputMessage message,
-        WindowsMouseMessageOptions options)
+    private static InputPoint WheelPositionFromLParam(in WindowsInputMessage message, WindowsMouseMessageOptions options)
     {
         int x = SignedLowWord(message.LParam);
         int y = SignedHighWord(message.LParam);
@@ -171,6 +142,7 @@ public sealed class WindowsMouseInputDevice : MouseInputDevice, IWindowsInputMes
 
         if ((keys & MkShift) != 0)
             modifiers |= InputModifiers.Shift;
+
         if ((keys & MkControl) != 0)
             modifiers |= InputModifiers.Control;
 
@@ -184,12 +156,16 @@ public sealed class WindowsMouseInputDevice : MouseInputDevice, IWindowsInputMes
 
         if ((keys & MkLeftButton) != 0)
             buttons |= MouseButtons.Left;
+        
         if ((keys & MkRightButton) != 0)
             buttons |= MouseButtons.Right;
+        
         if ((keys & MkMiddleButton) != 0)
             buttons |= MouseButtons.Middle;
+        
         if ((keys & MkXButton1) != 0)
             buttons |= MouseButtons.X1;
+        
         if ((keys & MkXButton2) != 0)
             buttons |= MouseButtons.X2;
 

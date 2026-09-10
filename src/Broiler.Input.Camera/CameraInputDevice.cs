@@ -8,11 +8,8 @@ public abstract class CameraInputDevice : InputDevice
     private CameraCaptureState _captureState = CameraCaptureState.Stopped;
     private CameraCaptureStatistics _captureStatistics;
 
-    protected CameraInputDevice(
-        InputDeviceDescriptor descriptor,
-        IInputClock? clock = null,
-        IInputDiagnosticSink? diagnostics = null)
-        : base(descriptor, clock, diagnostics)
+    protected CameraInputDevice(InputDeviceDescriptor descriptor, IInputClock? clock = null,
+        IInputDiagnosticSink? diagnostics = null) : base(descriptor, clock, diagnostics)
     {
         if (descriptor.Kind != InputKind.Camera)
             throw new ArgumentException("Camera devices require a camera descriptor.", nameof(descriptor));
@@ -36,15 +33,9 @@ public abstract class CameraInputDevice : InputDevice
         FrameReady?.Invoke(new CameraFrameReadyEvent(header ?? NextEventHeader(frame.Timestamp), frame));
     }
 
-    protected void SetNegotiatedFormat(CameraFormat format)
-    {
-        NegotiatedFormat = format ?? throw new ArgumentNullException(nameof(format));
-    }
+    protected void SetNegotiatedFormat(CameraFormat format) => NegotiatedFormat = format ?? throw new ArgumentNullException(nameof(format));
 
-    protected void SetCaptureStatistics(CameraCaptureStatistics statistics)
-    {
-        _captureStatistics = statistics;
-    }
+    protected void SetCaptureStatistics(CameraCaptureStatistics statistics) => _captureStatistics = statistics;
 
     protected void TransitionCaptureTo(CameraCaptureState state, InputFault? fault = null)
     {
@@ -53,6 +44,7 @@ public abstract class CameraInputDevice : InputDevice
 
         CameraCaptureState previous = _captureState;
         _captureState = state;
+        
         CaptureStateChanged?.Invoke(new CameraCaptureStateChangedEvent(previous, state, Clock.GetTimestamp(), fault));
     }
 

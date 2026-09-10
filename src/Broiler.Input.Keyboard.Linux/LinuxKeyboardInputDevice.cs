@@ -15,16 +15,12 @@ public sealed class LinuxKeyboardInputDevice : KeyboardInputDevice
     private CancellationTokenSource? _readCancellation;
     private Task? _readTask;
 
-    public LinuxKeyboardInputDevice(
-        InputDeviceDescriptor descriptor,
-        string eventPath,
-        string eventName,
-        int pollTimeoutMilliseconds,
-        IInputClock? clock = null)
-        : base(descriptor, clock)
+    public LinuxKeyboardInputDevice(InputDeviceDescriptor descriptor, string eventPath, string eventName,
+        int pollTimeoutMilliseconds, IInputClock? clock = null) : base(descriptor, clock)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
+
         _eventPath = eventPath;
         _eventName = eventName;
         _pollTimeoutMilliseconds = pollTimeoutMilliseconds <= 0 ? 50 : pollTimeoutMilliseconds;
@@ -39,6 +35,7 @@ public sealed class LinuxKeyboardInputDevice : KeyboardInputDevice
             return;
 
         LinuxEventDeviceStream stream = LinuxEventDeviceStream.Open(_eventPath, _eventName);
+
         try
         {
             await base.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -65,9 +62,7 @@ public sealed class LinuxKeyboardInputDevice : KeyboardInputDevice
         await base.StartAsync(cancellationToken).ConfigureAwait(false);
         _readCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         LinuxEventDeviceReadLoop loop = new(_stream, _pollTimeoutMilliseconds);
-        _readTask = Task.Run(
-            () => loop.Run(ProcessInputEvent, HandleReadFault, _readCancellation.Token),
-            CancellationToken.None);
+        _readTask = Task.Run(() => loop.Run(ProcessInputEvent, HandleReadFault, _readCancellation.Token), CancellationToken.None);
     }
 
     public override async ValueTask StopAsync(CancellationToken cancellationToken = default)

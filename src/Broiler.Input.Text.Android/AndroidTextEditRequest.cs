@@ -2,7 +2,7 @@ namespace Broiler.Input.Text.Android;
 
 /// <summary>
 /// The kind of editor mutation an input method asked for that
-/// <see cref="Broiler.Input.Text.TextInputDevice"/> cannot express.
+/// <see cref="TextInputDevice"/> cannot express.
 /// </summary>
 public enum AndroidTextEditRequestKind
 {
@@ -29,7 +29,7 @@ public enum AndroidTextEditRequestKind
 /// An editor mutation requested by an input method.
 /// </summary>
 /// <remarks>
-/// The neutral <see cref="Broiler.Input.Text.TextInputDevice"/> raises composition and committed
+/// The neutral <see cref="TextInputDevice"/> raises composition and committed
 /// text only; it has no way to say "delete two characters before the cursor". Rather than
 /// pretending an IME never asks for that, these requests are surfaced on the Android device so a
 /// host can service them today, and they mark exactly what the Broiler.UI editor contract has to
@@ -46,10 +46,7 @@ public enum AndroidTextEditRequestKind
 /// delete after the cursor. For the selection and composing-region kinds, the end offset. Unused
 /// for <see cref="AndroidTextEditRequestKind.EditorAction"/>.
 /// </param>
-public readonly record struct AndroidTextEditRequest(
-    AndroidTextEditRequestKind Kind,
-    int Start,
-    int End = 0)
+public readonly record struct AndroidTextEditRequest(AndroidTextEditRequestKind Kind, int Start, int End = 0)
 {
     /// <summary>Builds a delete-surrounding-text request.</summary>
     public static AndroidTextEditRequest DeleteSurrounding(int beforeLength, int afterLength) =>

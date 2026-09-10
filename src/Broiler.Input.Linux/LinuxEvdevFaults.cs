@@ -19,12 +19,8 @@ internal static class LinuxEvdevFaults
             _ => InputErrorCategory.NativeFailure,
         };
 
-        return new InputFault(
-            category,
-            $"Linux evdev {operation} failed for {eventName}: {MessageFor(errno)}",
-            exception,
-            errno,
-            "evdev");
+        return new InputFault(category, $"Linux evdev {operation} failed for {eventName}: {MessageFor(errno)}", 
+            exception, errno, "evdev");
     }
 
     public static LinuxInputException CreateException(IOException exception, string operation, string eventName) =>

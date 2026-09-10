@@ -1,15 +1,8 @@
 using System;
-using Broiler.Input;
 
 namespace Broiler.Input.Microphone.Windows;
 
-public sealed class InputMicrophoneException : InvalidOperationException
+public sealed class InputMicrophoneException(InputFault fault) : InvalidOperationException(fault?.Message)
 {
-    public InputMicrophoneException(InputFault fault)
-        : base(fault?.Message)
-    {
-        Fault = fault ?? throw new ArgumentNullException(nameof(fault));
-    }
-
-    public InputFault Fault { get; }
+    public InputFault Fault { get; } = fault ?? throw new ArgumentNullException(nameof(fault));
 }

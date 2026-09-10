@@ -51,6 +51,7 @@ public static class InputContractAssert
     {
         InputDeviceDescriptor descriptor = await GetFirstDescriptorAsync(provider).ConfigureAwait(false);
         FakeInputDevice device = await provider.OpenAsync(descriptor, new FakeInputOpenOptions()).ConfigureAwait(false);
+
         await device.OpenAsync().ConfigureAwait(false);
         await device.StartAsync().ConfigureAwait(false);
 
@@ -95,9 +96,9 @@ public static class InputContractAssert
         await device.OpenAsync().ConfigureAwait(false);
         device.SimulateRemoval();
 
-        True(diagnostics.Events.Any(static inputEvent => inputEvent.Name == "input.device.state"),
+        True(diagnostics.Events.Any(static inputEvent => inputEvent.Name == "input.device.state"), 
             "Lifecycle transitions emit diagnostics.");
-        True(diagnostics.Events.Any(static inputEvent => inputEvent.ErrorCategory == InputErrorCategory.DeviceRemoved),
+        True(diagnostics.Events.Any(static inputEvent => inputEvent.ErrorCategory == InputErrorCategory.DeviceRemoved), 
             "Removal emits a device-removed diagnostic.");
     }
 

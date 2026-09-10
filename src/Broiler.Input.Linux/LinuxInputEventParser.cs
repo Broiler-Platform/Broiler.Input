@@ -24,11 +24,9 @@ public static class LinuxInputEventParser
         ushort code = ReadUInt16(bytes.Slice(18, 2));
         int value = ReadInt32(bytes.Slice(20, 4));
 
-        inputEvent = new LinuxInputEvent(
-            new InputTimestamp((seconds * TimestampFrequency) + microseconds, TimestampFrequency, TimestampClockName),
-            type,
-            code,
-            value);
+        inputEvent = new LinuxInputEvent(new InputTimestamp((seconds * TimestampFrequency) + microseconds, TimestampFrequency,
+            TimestampClockName), type, code, value);
+
         bytesConsumed = InputEvent64Size;
         return true;
     }
@@ -47,18 +45,15 @@ public static class LinuxInputEventParser
         return consumed;
     }
 
-    private static long ReadInt64(ReadOnlySpan<byte> value) =>
-        BitConverter.IsLittleEndian
+    private static long ReadInt64(ReadOnlySpan<byte> value) => BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReadInt64LittleEndian(value)
             : BinaryPrimitives.ReadInt64BigEndian(value);
 
-    private static int ReadInt32(ReadOnlySpan<byte> value) =>
-        BitConverter.IsLittleEndian
+    private static int ReadInt32(ReadOnlySpan<byte> value) => BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReadInt32LittleEndian(value)
             : BinaryPrimitives.ReadInt32BigEndian(value);
 
-    private static ushort ReadUInt16(ReadOnlySpan<byte> value) =>
-        BitConverter.IsLittleEndian
+    private static ushort ReadUInt16(ReadOnlySpan<byte> value) => BitConverter.IsLittleEndian
             ? BinaryPrimitives.ReadUInt16LittleEndian(value)
             : BinaryPrimitives.ReadUInt16BigEndian(value);
 }

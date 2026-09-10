@@ -7,12 +7,8 @@ public sealed class InputDiagnosticEvent
 {
     private readonly IReadOnlyDictionary<string, string> _properties;
 
-    public InputDiagnosticEvent(
-        InputDiagnosticLevel level,
-        string name,
-        InputTimestamp timestamp,
-        InputDeviceId? deviceId = null,
-        InputErrorCategory? errorCategory = null,
+    public InputDiagnosticEvent(InputDiagnosticLevel level, string name, InputTimestamp timestamp,
+        InputDeviceId? deviceId = null, InputErrorCategory? errorCategory = null, 
         IReadOnlyDictionary<string, string>? properties = null)
     {
         if (string.IsNullOrWhiteSpace(name))

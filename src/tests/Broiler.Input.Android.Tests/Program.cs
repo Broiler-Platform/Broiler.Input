@@ -92,24 +92,13 @@ internal static class Program
     private const int MouseTool = AndroidMotionEventConstants.ToolTypeMouse;
 
     /// <summary>Packs an action code and a pointer index the way <c>MotionEvent.getAction()</c> does.</summary>
-    private static int Packed(int action, int pointerIndex) =>
-        action | (pointerIndex << AndroidMotionEventConstants.ActionPointerIndexShift);
+    private static int Packed(int action, int pointerIndex) => action | (pointerIndex << AndroidMotionEventConstants.ActionPointerIndexShift);
 
-    private static AndroidMotionSample Motion(
-        int packedAction,
-        long eventTime,
-        params AndroidPointerSample[] pointers) =>
+    private static AndroidMotionSample Motion(int packedAction, long eventTime, params AndroidPointerSample[] pointers) =>
         new(packedAction, pointers, eventTime, pointers.Length > 0 ? eventTime : 0);
 
-    private static AndroidPointerSample Pointer(
-        int id,
-        float x,
-        float y,
-        int toolType = Finger,
-        float pressure = 1f,
-        float tilt = 0f,
-        float orientation = 0f) =>
-        new(id, x, y, pressure, toolType, orientation, tilt);
+    private static AndroidPointerSample Pointer(int id, float x, float y, int toolType = Finger,
+        float pressure = 1f, float tilt = 0f, float orientation = 0f) => new(id, x, y, pressure, toolType, orientation, tilt);
 
     private static async Task<(AndroidTouchProvider Provider, AndroidTouchInputDevice Device, List<TouchContactEvent> Events)>
         OpenTouchAsync(double density = 1.0)
@@ -344,13 +333,8 @@ internal static class Program
     {
         (AndroidPenInputDevice device, List<PenContactEvent> events) = await OpenPenAsync().ConfigureAwait(false);
 
-        device.ProcessMotionEvent(new AndroidMotionSample(
-            Down,
-            [Pointer(1, 10, 20, Stylus, pressure: 0.5f)],
-            100,
-            100,
-            metaState: 0,
-            buttonState: AndroidMotionEventConstants.ButtonStylusPrimary));
+        device.ProcessMotionEvent(new AndroidMotionSample(Down, [Pointer(1, 10, 20, Stylus, pressure: 0.5f)],
+            100, 100, metaState: 0, buttonState: AndroidMotionEventConstants.ButtonStylusPrimary));
 
         AssertEqual(1, events.Count, "The stylus press produces one pen event.");
         AssertEqual(PenContactState.Pressed, events[0].State, "The pen reports a press.");
@@ -358,8 +342,7 @@ internal static class Program
         AssertTrue(events[0].Buttons.HasFlag(PenButtons.Barrel), "The stylus primary button maps to the barrel button.");
 
         // An eraser is a tool type on Android, not a button.
-        AssertTrue(
-            AndroidPenInputDevice.ToPenButtons(0, Eraser).HasFlag(PenButtons.Eraser),
+        AssertTrue(AndroidPenInputDevice.ToPenButtons(0, Eraser).HasFlag(PenButtons.Eraser),
             "The eraser tool sets the eraser flag with no button pressed.");
 
         device.ProcessMotionEvent(Motion(Up, 110, Pointer(1, 10, 20, Stylus)));
@@ -395,13 +378,9 @@ internal static class Program
         (AndroidKeyboardInputDevice device, List<KeyboardKeyEvent> keys, List<KeyboardTextEvent> text) =
             await OpenKeyboardAsync().ConfigureAwait(false);
 
-        device.ProcessKeyEvent(new AndroidKeyEventSample(
-            AndroidKeyEventConstants.ActionDown,
-            AndroidKeyEventConstants.KeycodeA,
-            ScanCode: 30,
-            MetaState: AndroidKeyEventConstants.MetaShiftOn | AndroidKeyEventConstants.MetaShiftLeftOn,
-            UnicodeChar: 'A',
-            EventTimeMilliseconds: 500));
+        device.ProcessKeyEvent(new AndroidKeyEventSample(AndroidKeyEventConstants.ActionDown, AndroidKeyEventConstants.KeycodeA,
+            ScanCode: 30, MetaState: AndroidKeyEventConstants.MetaShiftOn | AndroidKeyEventConstants.MetaShiftLeftOn,
+            UnicodeChar: 'A', EventTimeMilliseconds: 500));
 
         AssertEqual(1, keys.Count, "The press produces one key event.");
         AssertEqual("KeyA", keys[0].Key.Name, "The key carries its code name.");
@@ -413,10 +392,9 @@ internal static class Program
         AssertEqual(1, text.Count, "The press also produces text.");
         AssertEqual("A", text[0].Text, "The host-resolved unicode char is delivered as text.");
 
-        device.ProcessKeyEvent(new AndroidKeyEventSample(
-            AndroidKeyEventConstants.ActionUp,
-            AndroidKeyEventConstants.KeycodeA,
-            EventTimeMilliseconds: 520));
+        device.ProcessKeyEvent(new AndroidKeyEventSample(AndroidKeyEventConstants.ActionUp,
+            AndroidKeyEventConstants.KeycodeA, EventTimeMilliseconds: 520));
+        
         AssertEqual(KeyboardKeyTransition.Up, keys[^1].Transition, "The release reports an up transition.");
         AssertEqual(1, text.Count, "A release produces no additional text.");
     }
@@ -458,7 +436,7 @@ internal static class Program
 
     private static async Task ImeCompositionCommitsOnce()
     {
-        (AndroidTextInputDevice device, List<TextCompositionEvent> composition, List<TextInputEvent> text) =
+        (AndroidTextInputDevice device, List<TextCompositionEvent> composition, List<TextInputEvent> text) = 
             await OpenImeAsync().ConfigureAwait(false);
 
         device.SetComposingText("こ", 1, 1000);
@@ -700,8 +678,7 @@ internal static class Program
             throw new InvalidOperationException($"{message} Expected '{expected}', got '{actual}'.");
     }
 
-    private static void AssertThrows<TException>(Action action, string message)
-        where TException : Exception
+    private static void AssertThrows<TException>(Action action, string message) where TException : Exception
     {
         try
         {

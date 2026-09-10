@@ -12,7 +12,4 @@ namespace Broiler.Input.Pen;
 /// Synthesize <see cref="PenContactState.Cancelled"/> when the device loses capture with the pen
 /// down.
 /// </param>
-public sealed record PenOpenOptions(
-    bool ReportHover = true,
-    bool ReportTilt = true,
-    bool CancelContactsOnCaptureLoss = true);
+public sealed record PenOpenOptions(bool ReportHover = true, bool ReportTilt = true, bool CancelContactsOnCaptureLoss = true);

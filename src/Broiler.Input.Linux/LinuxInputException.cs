@@ -2,13 +2,7 @@ using System;
 
 namespace Broiler.Input.Linux;
 
-public sealed class LinuxInputException : InvalidOperationException
+public sealed class LinuxInputException(InputFault fault) : InvalidOperationException(fault?.Message, fault?.Exception)
 {
-    public LinuxInputException(InputFault fault)
-        : base(fault?.Message, fault?.Exception)
-    {
-        Fault = fault ?? throw new ArgumentNullException(nameof(fault));
-    }
-
-    public InputFault Fault { get; }
+    public InputFault Fault { get; } = fault ?? throw new ArgumentNullException(nameof(fault));
 }

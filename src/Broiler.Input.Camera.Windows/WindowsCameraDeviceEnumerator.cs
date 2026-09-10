@@ -18,9 +18,11 @@ internal static class WindowsCameraDeviceEnumerator
     {
         using MediaFoundationPlatformScope platform = new();
         List<ActivateEntry> activates = EnumerateActivates();
+
         try
         {
             List<InputDeviceDescriptor> descriptors = new(activates.Count);
+
             foreach (ActivateEntry entry in activates)
                 descriptors.Add(CreateDescriptor(entry.Activate));
 
@@ -33,14 +35,13 @@ internal static class WindowsCameraDeviceEnumerator
         }
     }
 
-    public static IMFMediaSource ActivateMediaSource(
-        InputDeviceDescriptor descriptor,
-        out object? activateObject,
-        out object? mediaSourceObject)
+    public static IMFMediaSource ActivateMediaSource(InputDeviceDescriptor descriptor,
+        out object? activateObject, out object? mediaSourceObject)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         string? symbolicLink = GetNativeSymbolicLink(descriptor);
         InputCameraException? activationFailure = null;
+
         if (!string.IsNullOrWhiteSpace(symbolicLink) &&
             TryActivateMediaSourceFromSymbolicLink(symbolicLink, out IMFMediaSource? linkedMediaSource, out mediaSourceObject, out activationFailure) &&
             linkedMediaSource is not null)
@@ -50,6 +51,7 @@ internal static class WindowsCameraDeviceEnumerator
         }
 
         List<ActivateEntry> activates = EnumerateActivates();
+
         activateObject = null;
         mediaSourceObject = null;
 
@@ -66,8 +68,10 @@ internal static class WindowsCameraDeviceEnumerator
                     continue;
 
                 SetFrameServerShareMode(entry.Activate);
+
                 Guid mediaSourceId = WindowsMediaFoundationNative.IMFMediaSourceId;
                 int activationResult = entry.Activate.ActivateObject(ref mediaSourceId, out mediaSourceObject);
+
                 if (activationResult < 0)
                 {
                     activationFailure ??= WindowsCameraFaults.CreateException(activationResult, "Media Foundation camera activation failed.");
@@ -79,6 +83,7 @@ internal static class WindowsCameraDeviceEnumerator
 
                 activateObject = entry.ActivateObject;
                 entry.Detach();
+
                 return mediaSource;
             }
         }
@@ -97,20 +102,18 @@ internal static class WindowsCameraDeviceEnumerator
     public static string? GetNativeSymbolicLink(InputDeviceDescriptor descriptor)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
-        return descriptor.Capabilities
-            .FirstOrDefault(static capability => capability.Name == SymbolicLinkCapability)
-            .Value;
+        return descriptor.Capabilities.FirstOrDefault(static capability => capability.Name == SymbolicLinkCapability).Value;
     }
 
     private static List<ActivateEntry> EnumerateActivates()
     {
-        WindowsCameraFaults.ThrowIfFailed(
-            WindowsMediaFoundationNative.MFCreateAttributes(out IMFAttributes attributes, 1),
+        WindowsCameraFaults.ThrowIfFailed(WindowsMediaFoundationNative.MFCreateAttributes(out IMFAttributes attributes, 1),
             "Media Foundation camera attribute store creation failed.");
         object? attributesObject = attributes;
 
         IntPtr activateArray = IntPtr.Zero;
         List<ActivateEntry> entries = [];
+
         try
         {
             Guid sourceType = WindowsMediaFoundationNative.MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE;
@@ -118,6 +121,7 @@ internal static class WindowsCameraDeviceEnumerator
             WindowsCameraFaults.ThrowIfFailed(attributes.SetGUID(ref sourceType, ref videoCapture), "Media Foundation camera source filter failed.");
             WindowsCameraFaults.ThrowIfFailed(attributes.GetGUID(ref sourceType, out _), "Media Foundation camera source filter verification failed.");
             int enumerationResult = WindowsMediaFoundationNative.MFEnumDeviceSources(attributes, out activateArray, out uint count);
+
             if (enumerationResult == WindowsMediaFoundationNative.MF_E_NO_CAPTURE_DEVICES_AVAILABLE)
                 return entries;
 
@@ -127,7 +131,9 @@ internal static class WindowsCameraDeviceEnumerator
             {
                 IntPtr activatePointer = Marshal.ReadIntPtr(activateArray, checked((int)index * IntPtr.Size));
                 object activateObject = Marshal.GetObjectForIUnknown(activatePointer);
+
                 Marshal.Release(activatePointer);
+
                 if (activateObject is IMFActivate activate)
                     entries.Add(new ActivateEntry(activateObject, activate));
                 else
@@ -140,15 +146,13 @@ internal static class WindowsCameraDeviceEnumerator
         {
             if (activateArray != IntPtr.Zero)
                 WindowsMediaFoundationNative.CoTaskMemFree(activateArray);
+
             ReleaseComObject(attributesObject);
         }
     }
 
-    private static bool TryActivateMediaSourceFromSymbolicLink(
-        string symbolicLink,
-        out IMFMediaSource? mediaSource,
-        out object? mediaSourceObject,
-        out InputCameraException? exception)
+    private static bool TryActivateMediaSourceFromSymbolicLink(string symbolicLink, out IMFMediaSource? mediaSource,
+        out object? mediaSourceObject, out InputCameraException? exception)
     {
         mediaSource = null;
         mediaSourceObject = null;
@@ -157,24 +161,25 @@ internal static class WindowsCameraDeviceEnumerator
 
         try
         {
-            WindowsCameraFaults.ThrowIfFailed(
-                WindowsMediaFoundationNative.MFCreateAttributes(out IMFAttributes attributes, 2),
-                "Media Foundation camera source attribute store creation failed.");
+            int result = WindowsMediaFoundationNative.MFCreateAttributes(out IMFAttributes attributes, 2);
+            WindowsCameraFaults.ThrowIfFailed(result, "Media Foundation camera source attribute store creation failed.");
+
             attributesObject = attributes;
 
             Guid sourceType = WindowsMediaFoundationNative.MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE;
             Guid videoCapture = WindowsMediaFoundationNative.MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID;
-            WindowsCameraFaults.ThrowIfFailed(
-                attributes.SetGUID(ref sourceType, ref videoCapture),
-                "Media Foundation camera source type selection failed.");
+
+            result = attributes.SetGUID(ref sourceType, ref videoCapture);
+            WindowsCameraFaults.ThrowIfFailed(result, "Media Foundation camera source type selection failed.");
 
             Guid symbolicLinkKey = WindowsMediaFoundationNative.MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK;
-            WindowsCameraFaults.ThrowIfFailed(
-                attributes.SetString(ref symbolicLinkKey, symbolicLink),
-                "Media Foundation camera symbolic link selection failed.");
+
+            result = attributes.SetString(ref symbolicLinkKey, symbolicLink);
+            WindowsCameraFaults.ThrowIfFailed(result, "Media Foundation camera symbolic link selection failed.");
 
             SetFrameServerShareMode(attributes);
-            int result = WindowsMediaFoundationNative.MFCreateDeviceSource(attributes, out IMFMediaSource linkedMediaSource);
+            result = WindowsMediaFoundationNative.MFCreateDeviceSource(attributes, out IMFMediaSource linkedMediaSource);
+
             if (result < 0)
             {
                 exception = WindowsCameraFaults.CreateException(result, "Media Foundation camera device source creation failed.");
@@ -183,6 +188,7 @@ internal static class WindowsCameraDeviceEnumerator
 
             mediaSource = linkedMediaSource;
             mediaSourceObject = linkedMediaSource;
+
             return true;
         }
         catch (InputCameraException caughtException)
@@ -199,9 +205,9 @@ internal static class WindowsCameraDeviceEnumerator
     private static void SetFrameServerShareMode(IMFAttributes attributes)
     {
         Guid frameServerShareMode = WindowsMediaFoundationNative.MF_DEVSOURCE_ATTRIBUTE_FRAMESERVER_SHARE_MODE;
-        WindowsCameraFaults.ThrowIfFailed(
-            attributes.SetUINT32(ref frameServerShareMode, 1),
-            "Media Foundation camera frame-server share mode selection failed.");
+        int result = attributes.SetUINT32(ref frameServerShareMode, 1);
+
+        WindowsCameraFaults.ThrowIfFailed(result, "Media Foundation camera frame-server share mode selection failed.");
     }
 
     private static InputDeviceDescriptor CreateDescriptor(IMFActivate activate)
@@ -210,25 +216,19 @@ internal static class WindowsCameraDeviceEnumerator
         string? symbolicLink = GetAllocatedString(activate, WindowsMediaFoundationNative.MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK);
         string stableSeed = string.IsNullOrWhiteSpace(symbolicLink) ? friendlyName ?? "unknown-camera" : symbolicLink;
 
-        List<InputCapability> capabilities =
-        [
-            new(SourceKindCapability, SourceKindValue),
-        ];
+        List<InputCapability> capabilities = [new(SourceKindCapability, SourceKindValue)];
 
         if (!string.IsNullOrWhiteSpace(symbolicLink))
             capabilities.Add(new InputCapability(SymbolicLinkCapability, symbolicLink));
 
-        return new InputDeviceDescriptor(
-            InputDeviceId.FromOpaqueValue(ToStableInputId(stableSeed)),
-            InputKind.Camera,
-            friendlyName ?? stableSeed,
-            InputDeviceAvailability.Available,
-            capabilities);
+        return new InputDeviceDescriptor(InputDeviceId.FromOpaqueValue(ToStableInputId(stableSeed)),
+            InputKind.Camera, friendlyName ?? stableSeed, InputDeviceAvailability.Available, capabilities);
     }
 
     private static string? GetAllocatedString(IMFAttributes attributes, Guid key)
     {
         IntPtr value = IntPtr.Zero;
+        
         try
         {
             int result = attributes.GetAllocatedString(ref key, out value, out _);
@@ -248,6 +248,7 @@ internal static class WindowsCameraDeviceEnumerator
     {
         byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(seed));
         string suffix = Convert.ToHexString(hash, 0, 12).ToLowerInvariant();
+
         return $"windows:mediafoundation:camera:{suffix}";
     }
 
@@ -257,24 +258,15 @@ internal static class WindowsCameraDeviceEnumerator
             Marshal.ReleaseComObject(value);
     }
 
-    private sealed class ActivateEntry : IDisposable
+    private sealed class ActivateEntry(object activateObject, IMFActivate activate) : IDisposable
     {
         private bool _detached;
 
-        public ActivateEntry(object activateObject, IMFActivate activate)
-        {
-            ActivateObject = activateObject;
-            Activate = activate;
-        }
+        public object ActivateObject { get; } = activateObject;
 
-        public object ActivateObject { get; }
+        public IMFActivate Activate { get; } = activate;
 
-        public IMFActivate Activate { get; }
-
-        public void Detach()
-        {
-            _detached = true;
-        }
+        public void Detach() => _detached = true;
 
         public void Dispose()
         {

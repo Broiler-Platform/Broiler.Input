@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Broiler.Input.Windows;
 
 public sealed class WindowsInputMessageDispatcher : IDisposable
 {
     private readonly IWindowsInputHost _host;
-    private readonly object _gate = new();
+    private readonly Lock _gate = new();
     private readonly List<IWindowsInputMessageSink> _sinks = [];
     private bool _disposed;
 
@@ -43,7 +44,7 @@ public sealed class WindowsInputMessageDispatcher : IDisposable
     {
         IWindowsInputMessageSink[] snapshot;
         lock (_gate)
-            snapshot = _sinks.ToArray();
+            snapshot = [.. _sinks];
 
         foreach (IWindowsInputMessageSink sink in snapshot)
         {

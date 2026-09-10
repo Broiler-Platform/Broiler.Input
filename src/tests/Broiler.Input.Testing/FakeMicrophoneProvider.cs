@@ -26,13 +26,10 @@ public sealed class FakeMicrophoneProvider : IMicrophoneInputProvider, IInputDev
 
     public InputDeviceDescriptor AddDevice(string id, string displayName)
     {
-        InputDeviceDescriptor descriptor = new(
-            InputDeviceId.FromOpaqueValue(id),
-            InputKind.Microphone,
-            displayName,
-            InputDeviceAvailability.Available,
-            [new InputCapability("microphone.capture.mode", "fake")]);
+        InputDeviceDescriptor descriptor = new(InputDeviceId.FromOpaqueValue(id), InputKind.Microphone,
+            displayName, InputDeviceAvailability.Available, [new InputCapability("microphone.capture.mode", "fake")]);
         _descriptors.Add(descriptor);
+
         DeviceChanged?.Invoke(new InputDeviceChange(InputDeviceChangeKind.Added, descriptor, _clock.GetTimestamp()));
         return descriptor;
     }
@@ -47,19 +44,17 @@ public sealed class FakeMicrophoneProvider : IMicrophoneInputProvider, IInputDev
         DeviceChanged?.Invoke(new InputDeviceChange(InputDeviceChangeKind.DefaultChanged, descriptor, _clock.GetTimestamp()));
     }
 
-    public ValueTask<IReadOnlyList<InputDeviceDescriptor>> GetDevicesAsync(
-        CancellationToken cancellationToken = default)
+    public ValueTask<IReadOnlyList<InputDeviceDescriptor>> GetDevicesAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult<IReadOnlyList<InputDeviceDescriptor>>(_descriptors.ToArray());
+        return ValueTask.FromResult<IReadOnlyList<InputDeviceDescriptor>>([.. _descriptors]);
     }
 
-    public ValueTask<MicrophoneInputDevice> OpenAsync(
-        InputDeviceDescriptor descriptor,
-        MicrophoneOpenOptions options,
-        CancellationToken cancellationToken = default)
+    public ValueTask<MicrophoneInputDevice> OpenAsync(InputDeviceDescriptor descriptor, 
+        MicrophoneOpenOptions options, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
         ArgumentNullException.ThrowIfNull(descriptor);
         ArgumentNullException.ThrowIfNull(options);
 

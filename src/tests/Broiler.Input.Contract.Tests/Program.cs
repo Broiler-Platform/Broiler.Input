@@ -82,10 +82,7 @@ internal static class Program
 
     private static void CoreHasNoWindowsReferences()
     {
-        string[] references = typeof(InputDevice).Assembly
-            .GetReferencedAssemblies()
-            .Select(static reference => reference.Name ?? string.Empty)
-            .ToArray();
+        string[] references = [.. typeof(InputDevice).Assembly.GetReferencedAssemblies().Select(static reference => reference.Name ?? string.Empty)];
 
         AssertFalse(references.Any(static reference => reference.Contains("Windows", StringComparison.OrdinalIgnoreCase)),
             "Broiler.Input must not reference Windows assemblies.");
@@ -94,24 +91,21 @@ internal static class Program
     private static async Task WindowsKeyboardCookedTranslationMatchesPhase2Contract()
     {
         ManualInputClock clock = new();
-        WindowsKeyboardInputDevice device = new(
-            new InputDeviceDescriptor(InputDeviceId.FromOpaqueValue("test:keyboard"), InputKind.Keyboard, "Test keyboard"),
-            new KeyboardOpenOptions(),
-            clock);
+        WindowsKeyboardInputDevice device =
+            new(new InputDeviceDescriptor(InputDeviceId.FromOpaqueValue("test:keyboard"), InputKind.Keyboard, "Test keyboard"),
+            new KeyboardOpenOptions(), clock);
+
         await device.OpenAsync().ConfigureAwait(false);
         await device.StartAsync().ConfigureAwait(false);
 
         KeyboardKeyEvent? keyEvent = null;
         KeyboardTextEvent? textEvent = null;
+
         device.KeyChanged += inputEvent => keyEvent = inputEvent;
         device.TextInput += inputEvent => textEvent = inputEvent;
 
-        bool handled = device.ProcessMessage(new WindowsInputMessage(
-            IntPtr.Zero,
-            WindowsMessageIds.SysKeyDown,
-            new IntPtr(0x10),
-            MakeKeyLParam(repeatCount: 2, scanCode: 0x36, isExtended: false, wasDown: true),
-            clock.Advance(1)));
+        bool handled = device.ProcessMessage(new WindowsInputMessage(IntPtr.Zero, WindowsMessageIds.SysKeyDown, new IntPtr(0x10),
+            MakeKeyLParam(repeatCount: 2, scanCode: 0x36, isExtended: false, wasDown: true), clock.Advance(1)));
 
         AssertFalse(handled, "System-key messages should not be consumed by default.");
         AssertTrue(keyEvent is not null, "Keyboard key event should be emitted.");
@@ -124,12 +118,8 @@ internal static class Program
         AssertEqual(KeyboardKeyLocation.Right, key.Location, "Right Shift location is derived from scan code.");
         AssertEqual(InputEventSource.Semantic, key.Source, "Cooked keyboard messages are semantic events.");
 
-        handled = device.ProcessMessage(new WindowsInputMessage(
-            IntPtr.Zero,
-            WindowsMessageIds.Char,
-            new IntPtr('z'),
-            IntPtr.Zero,
-            clock.Advance(1)));
+        handled = device.ProcessMessage(new WindowsInputMessage(IntPtr.Zero, WindowsMessageIds.Char,
+            new IntPtr('z'), IntPtr.Zero, clock.Advance(1)));
 
         AssertTrue(handled, "Keyboard text message should be handled.");
         AssertEqual("z", textEvent?.Text, "Keyboard text input preserves translated text.");
@@ -139,27 +129,22 @@ internal static class Program
     private static async Task WindowsMouseCookedTranslationMatchesPhase2Contract()
     {
         ManualInputClock clock = new();
-        WindowsMouseInputDevice device = new(
-            new InputDeviceDescriptor(InputDeviceId.FromOpaqueValue("test:mouse"), InputKind.Mouse, "Test mouse"),
-            new MouseOpenOptions(),
-            clock,
-            new WindowsMouseMessageOptions(2.0, "client-dip", ConvertWheelScreenPointToClient: false));
+        WindowsMouseInputDevice device = new(new InputDeviceDescriptor(InputDeviceId.FromOpaqueValue("test:mouse"), InputKind.Mouse, "Test mouse"),
+            new MouseOpenOptions(), clock, new WindowsMouseMessageOptions(2.0, "client-dip", ConvertWheelScreenPointToClient: false));
+
         await device.OpenAsync().ConfigureAwait(false);
         await device.StartAsync().ConfigureAwait(false);
 
         MouseButtonEvent? buttonEvent = null;
         MouseWheelEvent? wheelEvent = null;
         MouseCaptureLostEvent? captureLostEvent = null;
+
         device.ButtonChanged += inputEvent => buttonEvent = inputEvent;
         device.WheelChanged += inputEvent => wheelEvent = inputEvent;
         device.CaptureLost += inputEvent => captureLostEvent = inputEvent;
 
-        bool handled = device.ProcessMessage(new WindowsInputMessage(
-            IntPtr.Zero,
-            WindowsMessageIds.XButtonDown,
-            MakeWParam(lowWord: 0x0020, highWord: 1),
-            MakeLParam(20, 10),
-            clock.Advance(1)));
+        bool handled = device.ProcessMessage(new WindowsInputMessage(IntPtr.Zero, WindowsMessageIds.XButtonDown,
+            MakeWParam(lowWord: 0x0020, highWord: 1), MakeLParam(20, 10), clock.Advance(1)));
 
         AssertTrue(handled, "Mouse X button message should be handled.");
         AssertTrue(buttonEvent is not null, "Mouse button event should be emitted.");
@@ -171,23 +156,15 @@ internal static class Program
         AssertEqual("client-dip", button.Position.CoordinateSpace, "Coordinate-space label is preserved.");
         AssertEqual(InputEventSource.Semantic, button.Source, "Cooked mouse messages are semantic events.");
 
-        handled = device.ProcessMessage(new WindowsInputMessage(
-            IntPtr.Zero,
-            WindowsMessageIds.MouseHorizontalWheel,
-            MakeWParam(lowWord: 0, highWord: -120),
-            MakeLParam(40, 20),
-            clock.Advance(1)));
+        handled = device.ProcessMessage(new WindowsInputMessage(IntPtr.Zero, WindowsMessageIds.MouseHorizontalWheel,
+            MakeWParam(lowWord: 0, highWord: -120), MakeLParam(40, 20), clock.Advance(1)));
 
         AssertTrue(handled, "Horizontal wheel message should be handled.");
         AssertEqual(MouseWheelAxis.Horizontal, wheelEvent?.Axis, "Horizontal wheel axis is preserved.");
         AssertEqual(-1.0, wheelEvent?.DeltaNotches, "Wheel delta is normalized to notches.");
 
-        handled = device.ProcessMessage(new WindowsInputMessage(
-            IntPtr.Zero,
-            WindowsMessageIds.CaptureChanged,
-            IntPtr.Zero,
-            IntPtr.Zero,
-            clock.Advance(1)));
+        handled = device.ProcessMessage(new WindowsInputMessage(IntPtr.Zero, WindowsMessageIds.CaptureChanged,
+            IntPtr.Zero, IntPtr.Zero, clock.Advance(1)));
 
         AssertTrue(handled, "Capture-changed message should be handled.");
         AssertTrue(captureLostEvent is not null, "Mouse capture-lost event should be emitted.");
@@ -203,38 +180,27 @@ internal static class Program
         keyboard.DeviceChanged += change => keyboardChange = change;
         mouse.DeviceChanged += change => mouseChange = change;
 
-        bool keyboardHandled = keyboard.ProcessMessage(new WindowsInputMessage(
-            IntPtr.Zero,
-            WindowsMessageIds.InputDeviceChange,
-            new IntPtr(1),
-            IntPtr.Zero,
-            clock.Advance(1)));
-        bool mouseHandled = mouse.ProcessMessage(new WindowsInputMessage(
-            IntPtr.Zero,
-            WindowsMessageIds.InputDeviceChange,
-            new IntPtr(2),
-            IntPtr.Zero,
-            clock.Advance(1)));
+        bool keyboardHandled = keyboard.ProcessMessage(new WindowsInputMessage(IntPtr.Zero, WindowsMessageIds.InputDeviceChange,
+            new IntPtr(1), IntPtr.Zero, clock.Advance(1)));
+        bool mouseHandled = mouse.ProcessMessage(new WindowsInputMessage(IntPtr.Zero, WindowsMessageIds.InputDeviceChange,
+            new IntPtr(2), IntPtr.Zero, clock.Advance(1)));
 
         AssertFalse(keyboardHandled, "Hot-plug observers should not consume the shared device-change message.");
         AssertFalse(mouseHandled, "Hot-plug observers should not consume the shared device-change message.");
         AssertEqual(InputDeviceChangeKind.Added, keyboardChange?.Kind, "Keyboard arrival is reported.");
         AssertEqual(InputDeviceChangeKind.Removed, mouseChange?.Kind, "Mouse removal is reported.");
+
         return Task.CompletedTask;
     }
 
     private static async Task LegacyWindowAdapterMatchesCallbackCategories()
     {
         ManualInputClock clock = new();
-        WindowsKeyboardInputDevice keyboard = new(
-            new InputDeviceDescriptor(InputDeviceId.FromOpaqueValue("test:legacy-keyboard"), InputKind.Keyboard, "Legacy keyboard"),
-            new KeyboardOpenOptions(),
-            clock);
-        WindowsMouseInputDevice mouse = new(
-            new InputDeviceDescriptor(InputDeviceId.FromOpaqueValue("test:legacy-mouse"), InputKind.Mouse, "Legacy mouse"),
-            new MouseOpenOptions(),
-            clock,
-            new WindowsMouseMessageOptions(ConvertWheelScreenPointToClient: false));
+        WindowsKeyboardInputDevice keyboard = new(new InputDeviceDescriptor(InputDeviceId.FromOpaqueValue("test:legacy-keyboard"),
+            InputKind.Keyboard, "Legacy keyboard"), new KeyboardOpenOptions(), clock);
+        WindowsMouseInputDevice mouse = new(new InputDeviceDescriptor(InputDeviceId.FromOpaqueValue("test:legacy-mouse"),
+            InputKind.Mouse, "Legacy mouse"), new MouseOpenOptions(), clock, new WindowsMouseMessageOptions(ConvertWheelScreenPointToClient: false));
+
         await keyboard.OpenAsync().ConfigureAwait(false);
         await keyboard.StartAsync().ConfigureAwait(false);
         await mouse.OpenAsync().ConfigureAwait(false);
@@ -246,6 +212,7 @@ internal static class Program
         LegacyPointerEvent? pointerDown = null;
         LegacyMouseWheelEvent? mouseWheel = null;
         bool captureLost = false;
+
         adapter.KeyDown += inputEvent => keyDown = inputEvent;
         adapter.TextInput += inputEvent => textInput = inputEvent;
         adapter.PointerDown += inputEvent => pointerDown = inputEvent;
@@ -283,16 +250,16 @@ internal static class Program
     private static async Task WindowsKeyboardPhase3TextHardening()
     {
         ManualInputClock clock = new();
-        WindowsKeyboardInputDevice device = new(
-            new InputDeviceDescriptor(InputDeviceId.FromOpaqueValue("test:keyboard-phase3-text"), InputKind.Keyboard, "Phase 3 keyboard"),
-            new KeyboardOpenOptions(),
-            clock);
+        WindowsKeyboardInputDevice device = new(new InputDeviceDescriptor(InputDeviceId.FromOpaqueValue("test:keyboard-phase3-text"), InputKind.Keyboard, "Phase 3 keyboard"),
+            new KeyboardOpenOptions(), clock);
+
         await device.OpenAsync().ConfigureAwait(false);
         await device.StartAsync().ConfigureAwait(false);
 
         List<KeyboardTextEvent> textEvents = [];
         KeyboardDeadKeyEvent? deadKey = null;
-        device.TextInput += inputEvent => textEvents.Add(inputEvent);
+
+        device.TextInput += textEvents.Add;
         device.DeadKeyInput += inputEvent => deadKey = inputEvent;
 
         device.ProcessMessage(new WindowsInputMessage(IntPtr.Zero, WindowsMessageIds.Char, new IntPtr(0xD83D), IntPtr.Zero, clock.Advance(1)));
@@ -312,16 +279,16 @@ internal static class Program
     private static async Task WindowsKeyboardPhase3CompositionAndLayout()
     {
         ManualInputClock clock = new();
-        WindowsKeyboardInputDevice device = new(
-            new InputDeviceDescriptor(InputDeviceId.FromOpaqueValue("test:keyboard-phase3-composition"), InputKind.Keyboard, "Phase 3 keyboard"),
-            new KeyboardOpenOptions(),
-            clock);
+        WindowsKeyboardInputDevice device = new(new InputDeviceDescriptor(InputDeviceId.FromOpaqueValue("test:keyboard-phase3-composition"), InputKind.Keyboard, "Phase 3 keyboard"),
+            new KeyboardOpenOptions(), clock);
+
         await device.OpenAsync().ConfigureAwait(false);
         await device.StartAsync().ConfigureAwait(false);
 
         List<KeyboardCompositionEvent> compositionEvents = [];
         KeyboardLayoutChangedEvent? layoutChanged = null;
-        device.CompositionChanged += inputEvent => compositionEvents.Add(inputEvent);
+
+        device.CompositionChanged += compositionEvents.Add;
         device.LayoutChanged += inputEvent => layoutChanged = inputEvent;
 
         AssertFalse(device.ProcessMessage(new WindowsInputMessage(IntPtr.Zero, WindowsMessageIds.ImeStartComposition, IntPtr.Zero, IntPtr.Zero, clock.Advance(1))),
@@ -354,9 +321,7 @@ internal static class Program
         {
         }
 
-        WindowsRawInputRegistrationOptions acknowledged = new(
-            ReceiveInputWhenNotFocused: true,
-            AcknowledgeBackgroundInput: true);
+        WindowsRawInputRegistrationOptions acknowledged = new(ReceiveInputWhenNotFocused: true, AcknowledgeBackgroundInput: true);
         acknowledged.Validate(new IntPtr(1));
     }
 
@@ -391,13 +356,10 @@ internal static class Program
         ManualInputClock clock = new();
         FakeMicrophoneProvider provider = new(clock);
         MicrophoneFormat format = new(48_000, 1, 16, MicrophoneSampleFormat.Pcm16);
-        MicrophoneOpenOptions options = new(
-            sessionOptions: new MicrophoneSessionOptions(
-                new InputDeliveryOptions(2, InputDeliveryOverflowPolicy.DropOldest)));
+        MicrophoneOpenOptions options = new(sessionOptions: new MicrophoneSessionOptions(new InputDeliveryOptions(2, InputDeliveryOverflowPolicy.DropOldest)));
 
-        FakeMicrophoneInputDevice device = (FakeMicrophoneInputDevice)await provider.OpenAsync(
-            provider.DefaultDescriptor,
-            options).ConfigureAwait(false);
+        FakeMicrophoneInputDevice device = (FakeMicrophoneInputDevice)await provider.OpenAsync(provider.DefaultDescriptor, options).ConfigureAwait(false);
+
         await device.OpenAsync().ConfigureAwait(false);
         await device.StartAsync().ConfigureAwait(false);
 
@@ -406,6 +368,7 @@ internal static class Program
         AssertTrue(device.TryCapture([3, 0], format, MicrophoneBufferFlags.Discontinuous), "Drop-oldest accepts the newest microphone packet.");
 
         MicrophoneCaptureStatistics statistics = device.CaptureStatistics;
+
         AssertEqual(3L, statistics.CapturedCount, "All attempted microphone packets are counted.");
         AssertEqual(1L, statistics.DroppedOldestCount, "Bounded microphone delivery drops the oldest packet.");
         AssertEqual(1L, statistics.SilentCount, "Silent microphone packets are counted.");
@@ -413,6 +376,7 @@ internal static class Program
         AssertEqual(2, statistics.QueueDepth, "Microphone queue depth is bounded by options.");
 
         AssertTrue(device.TryRead(out MicrophoneBufferLease? first), "First remaining microphone packet should be readable.");
+
         using (first)
         {
             AssertEqual((byte)2, first?.Memory.Span[0], "Oldest microphone packet was dropped.");
@@ -421,9 +385,11 @@ internal static class Program
 
         MicrophoneBufferReadyEvent? ready = null;
         device.BufferReady += inputEvent => ready = inputEvent;
+
         AssertTrue(device.DrainNext(), "Second remaining microphone packet should be delivered.");
         AssertEqual((byte)3, ready?.Buffer.Memory.Span[0], "Microphone buffer event preserves packet memory.");
         AssertTrue((ready?.Buffer.Flags & MicrophoneBufferFlags.Discontinuous) != 0, "Discontinuity flag is preserved.");
+
         ready?.Buffer.Dispose();
 
         AssertEqual(2L, device.CaptureStatistics.DeliveredCount, "Read and drained microphone packets are counted as delivered.");
@@ -432,12 +398,8 @@ internal static class Program
 
     private static void MicrophoneLeaseDisposalInvalidatesMemory()
     {
-        MicrophoneBufferLease lease = new(
-            [1, 2, 3, 4],
-            new MicrophoneFormat(48_000, 1, 16, MicrophoneSampleFormat.Pcm16),
-            new InputTimestamp(10, 1_000, "test"),
-            20,
-            MicrophoneBufferFlags.None);
+        MicrophoneBufferLease lease = new([1, 2, 3, 4], new MicrophoneFormat(48_000, 1, 16, MicrophoneSampleFormat.Pcm16),
+            new InputTimestamp(10, 1_000, "test"), 20, MicrophoneBufferFlags.None);
 
         AssertEqual(2, lease.FrameCount, "Microphone lease derives frame count from format.");
         lease.Dispose();
@@ -469,9 +431,7 @@ internal static class Program
     private static void WindowsMicrophoneContractsAreIsolated()
     {
         Assembly windowsMicrophone = typeof(WindowsMicrophoneProvider).Assembly;
-        string[] references = windowsMicrophone.GetReferencedAssemblies()
-            .Select(static reference => reference.Name ?? string.Empty)
-            .ToArray();
+        string[] references = [.. windowsMicrophone.GetReferencedAssemblies().Select(static reference => reference.Name ?? string.Empty)];
 
         AssertFalse(references.Any(static reference =>
                 reference.Contains("NAudio", StringComparison.OrdinalIgnoreCase) ||
@@ -486,9 +446,9 @@ internal static class Program
     {
         FakeCameraProvider provider = new();
         CameraFormat format = new(2, 2, 30, 1, CameraPixelFormat.Bgra32);
-        FakeCameraInputDevice device = (FakeCameraInputDevice)await provider.OpenAsync(
-            provider.DefaultDescriptor,
-            CameraOpenOptions.Default).ConfigureAwait(false);
+        FakeCameraInputDevice device =
+            (FakeCameraInputDevice)await provider.OpenAsync(provider.DefaultDescriptor, CameraOpenOptions.Default).ConfigureAwait(false);
+
         await device.OpenAsync().ConfigureAwait(false);
         await device.StartAsync().ConfigureAwait(false);
 
@@ -517,13 +477,10 @@ internal static class Program
     {
         FakeCameraProvider provider = new();
         CameraFormat format = new(2, 2, 30, 1, CameraPixelFormat.Bgra32);
-        CameraOpenOptions options = new(
-            sessionOptions: new CameraSessionOptions(
-                new InputDeliveryOptions(2, InputDeliveryOverflowPolicy.DropNewest),
-                CameraFrameDeliveryMode.LossSensitive));
-        FakeCameraInputDevice device = (FakeCameraInputDevice)await provider.OpenAsync(
-            provider.DefaultDescriptor,
-            options).ConfigureAwait(false);
+        CameraOpenOptions options = new(sessionOptions: new CameraSessionOptions(new InputDeliveryOptions(2, InputDeliveryOverflowPolicy.DropNewest),
+            CameraFrameDeliveryMode.LossSensitive));
+        FakeCameraInputDevice device = (FakeCameraInputDevice)await provider.OpenAsync(provider.DefaultDescriptor, options).ConfigureAwait(false);
+
         await device.OpenAsync().ConfigureAwait(false);
         await device.StartAsync().ConfigureAwait(false);
 
@@ -547,15 +504,8 @@ internal static class Program
 
     private static void CameraFrameLeaseDisposalInvalidatesMemory()
     {
-        CameraFrameLease frame = new(
-            [1, 2, 3, 4],
-            new CameraFormat(1, 1, 30, 1, CameraPixelFormat.Bgra32),
-            [new CameraFramePlane(0, 4, 4, 1, 1)],
-            new InputTimestamp(10, 1_000, "test"),
-            7,
-            CameraFrameFlags.FormatChanged,
-            CameraRotation.Rotate90,
-            CameraColorSpace.Rec709);
+        CameraFrameLease frame = new([1, 2, 3, 4], new CameraFormat(1, 1, 30, 1, CameraPixelFormat.Bgra32), [new CameraFramePlane(0, 4, 4, 1, 1)],
+            new InputTimestamp(10, 1_000, "test"), 7, CameraFrameFlags.FormatChanged, CameraRotation.Rotate90, CameraColorSpace.Rec709);
 
         AssertEqual(1, frame.Planes.Count, "Camera frame plane metadata is preserved.");
         AssertEqual(CameraRotation.Rotate90, frame.Rotation, "Camera rotation metadata is preserved.");
@@ -577,9 +527,9 @@ internal static class Program
     {
         FakeCameraProvider provider = new();
         CameraFormat format = new(1, 1, 30, 1, CameraPixelFormat.Gray8);
-        FakeCameraInputDevice device = (FakeCameraInputDevice)await provider.OpenAsync(
-            provider.DefaultDescriptor,
+        FakeCameraInputDevice device = (FakeCameraInputDevice)await provider.OpenAsync(provider.DefaultDescriptor,
             CameraOpenOptions.Default).ConfigureAwait(false);
+
         await device.OpenAsync().ConfigureAwait(false);
         await device.StartAsync().ConfigureAwait(false);
 
@@ -600,9 +550,7 @@ internal static class Program
     private static void WindowsCameraContractsAreIsolated()
     {
         Assembly windowsCamera = typeof(WindowsCameraProvider).Assembly;
-        string[] references = windowsCamera.GetReferencedAssemblies()
-            .Select(static reference => reference.Name ?? string.Empty)
-            .ToArray();
+        string[] references = [.. windowsCamera.GetReferencedAssemblies().Select(static reference => reference.Name ?? string.Empty)];
 
         AssertFalse(references.Any(static reference =>
                 reference.Contains("AForge", StringComparison.OrdinalIgnoreCase) ||
@@ -626,9 +574,7 @@ internal static class Program
 
         foreach (Assembly assembly in assemblies)
         {
-            string[] references = assembly.GetReferencedAssemblies()
-                .Select(static reference => reference.Name ?? string.Empty)
-                .ToArray();
+            string[] references = [.. assembly.GetReferencedAssemblies().Select(static reference => reference.Name ?? string.Empty)];
             AssertFalse(references.Any(static reference =>
                     reference.Contains("Camera", StringComparison.Ordinal) ||
                     reference.Contains("Microphone", StringComparison.Ordinal)),
@@ -659,8 +605,8 @@ internal static class Program
     /// </summary>
     private static void PointerModifiersMirrorKeyboardModifiers()
     {
-        string[] pointer = Enum.GetNames<InputModifiers>().OrderBy(static name => name, StringComparer.Ordinal).ToArray();
-        string[] keyboard = Enum.GetNames<KeyboardModifierState>().OrderBy(static name => name, StringComparer.Ordinal).ToArray();
+        string[] pointer = [.. Enum.GetNames<InputModifiers>().OrderBy(static name => name, StringComparer.Ordinal)];
+        string[] keyboard = [.. Enum.GetNames<KeyboardModifierState>().OrderBy(static name => name, StringComparer.Ordinal)];
 
         if (!pointer.SequenceEqual(keyboard, StringComparer.Ordinal))
         {
@@ -685,12 +631,9 @@ internal static class Program
     /// </summary>
     private static void MouseDoesNotReferenceKeyboard()
     {
-        string[] references = typeof(MouseInputDevice).Assembly.GetReferencedAssemblies()
-            .Select(static reference => reference.Name ?? string.Empty)
-            .ToArray();
+        string[] references = [.. typeof(MouseInputDevice).Assembly.GetReferencedAssemblies().Select(static reference => reference.Name ?? string.Empty)];
 
-        AssertFalse(
-            references.Any(static reference => reference.Contains("Keyboard", StringComparison.Ordinal)),
+        AssertFalse(references.Any(static reference => reference.Contains("Keyboard", StringComparison.Ordinal)),
             "Broiler.Input.Mouse must not reference Broiler.Input.Keyboard; modifier state lives in the root.");
     }
 
@@ -701,36 +644,29 @@ internal static class Program
     /// </summary>
     private static void PointerEventsCarryModifiers()
     {
-        InputEventHeader header = new(
-            InputDeviceId.FromOpaqueValue("mouse"),
-            new InputTimestamp(1, TimeSpan.TicksPerSecond, "contract"),
-            1);
+        InputEventHeader header = new(InputDeviceId.FromOpaqueValue("mouse"), new InputTimestamp(1, TimeSpan.TicksPerSecond, "contract"), 1);
         InputPoint position = InputPoint.ClientDeviceIndependentPixels(4, 8);
 
-        MouseButtonEvent button = new(
-            header, position, MouseButtons.Left, MouseButton.Left, MouseButtonTransition.Down,
+        MouseButtonEvent button = new(header, position, MouseButtons.Left, MouseButton.Left, MouseButtonTransition.Down,
             Modifiers: InputModifiers.Control | InputModifiers.Shift);
         AssertEqual(InputModifiers.Control | InputModifiers.Shift, button.Modifiers, "Mouse button events carry modifiers.");
 
         MouseMoveEvent move = new(header, position, MouseButtons.None, Modifiers: InputModifiers.Alt);
         AssertEqual(InputModifiers.Alt, move.Modifiers, "Mouse move events carry modifiers.");
 
-        MouseWheelEvent wheel = new(
-            header, position, MouseButtons.None, MouseWheelAxis.Vertical, 1, Modifiers: InputModifiers.Control);
+        MouseWheelEvent wheel = new(header, position, MouseButtons.None, MouseWheelAxis.Vertical, 1, Modifiers: InputModifiers.Control);
         AssertEqual(InputModifiers.Control, wheel.Modifiers, "Mouse wheel events carry modifiers.");
 
-        MouseButtonEvent unmodified = new(
-            header, position, MouseButtons.Left, MouseButton.Left, MouseButtonTransition.Down);
+        MouseButtonEvent unmodified = new(header, position, MouseButtons.Left, MouseButton.Left, MouseButtonTransition.Down);
         AssertEqual(InputModifiers.None, unmodified.Modifiers, "Modifiers default to None.");
     }
 
     private static void PublicApiBaselineMatches()
     {
         string baselinePath = Path.Combine(AppContext.BaseDirectory, "api-baseline.txt");
-        string[] expected = File.ReadAllLines(baselinePath)
-            .Where(static line => !string.IsNullOrWhiteSpace(line) && !line.StartsWith("#", StringComparison.Ordinal))
-            .OrderBy(static line => line, StringComparer.Ordinal)
-            .ToArray();
+        string[] expected = [.. File.ReadAllLines(baselinePath)
+            .Where(static line => !string.IsNullOrWhiteSpace(line) && !line.StartsWith('#'))
+            .OrderBy(static line => line, StringComparer.Ordinal)];
 
         Assembly[] assemblies =
         [
@@ -747,11 +683,10 @@ internal static class Program
             typeof(WindowsMouseInputDevice).Assembly,
         ];
 
-        string[] actual = assemblies
-            .SelectMany(static assembly => assembly.GetExportedTypes()
-                .Select(type => $"{assembly.GetName().Name}:{type.FullName}"))
-            .OrderBy(static line => line, StringComparer.Ordinal)
-            .ToArray();
+        string[] actual = [.. 
+            assemblies.SelectMany(static assembly => 
+            assembly.GetExportedTypes().Select(type => 
+            $"{assembly.GetName().Name}:{type.FullName}")).OrderBy(static line => line, StringComparer.Ordinal)];
 
         if (!expected.SequenceEqual(actual))
         {
@@ -797,10 +732,13 @@ internal static class Program
     {
         int value = repeatCount & 0xFFFF;
         value |= (scanCode & 0xFF) << 16;
+
         if (isExtended)
             value |= 1 << 24;
+
         if (wasDown)
             value |= 1 << 30;
+
         return new IntPtr(value);
     }
 
@@ -816,21 +754,14 @@ internal static class Program
         return new IntPtr(value);
     }
 
-    private sealed class CountingSink : IWindowsInputMessageSink
+    private sealed class CountingSink(bool handled) : IWindowsInputMessageSink
     {
-        private readonly bool _handled;
-
-        public CountingSink(bool handled)
-        {
-            _handled = handled;
-        }
-
         public int Count { get; private set; }
 
         public bool ProcessMessage(in WindowsInputMessage message)
         {
             Count++;
-            return _handled;
+            return handled;
         }
     }
 
@@ -848,9 +779,6 @@ internal static class Program
             return true;
         }
 
-        public void Emit(WindowsInputMessage message)
-        {
-            MessageReceived?.Invoke(message);
-        }
+        public void Emit(WindowsInputMessage message) => MessageReceived?.Invoke(message);
     }
 }

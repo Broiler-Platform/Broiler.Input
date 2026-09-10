@@ -21,11 +21,8 @@ internal static class Program
             return 0;
         }
 
-        LinuxEvdevProviderOptions providerOptions = new(
-            commandLine.InputDirectory,
-            commandLine.SysfsInputRoot,
-            commandLine.AcknowledgeRawInput,
-            commandLine.PollTimeoutMilliseconds);
+        LinuxEvdevProviderOptions providerOptions = new(commandLine.InputDirectory, commandLine.SysfsInputRoot,
+            commandLine.AcknowledgeRawInput, commandLine.PollTimeoutMilliseconds);
 
         PrintDependencies(commandLine.InputDirectory);
         IReadOnlyList<LinuxEvdevDeviceInfo> devices = LinuxEvdevDeviceDiscovery.DiscoverAll(providerOptions);
@@ -52,7 +49,9 @@ internal static class Program
     private static void PrintDependencies(string inputDirectory)
     {
         LinuxInputDependencyReport report = LinuxInputDependencies.CheckBaseline(inputDirectory);
+
         Console.WriteLine("Dependencies:");
+
         foreach (LinuxInputNativeLibraryStatus library in report.NativeLibraries)
             Console.WriteLine($"  {library.Id}: {(library.IsAvailable ? "available" : "missing")} - {library.Diagnostic}");
 
@@ -63,8 +62,13 @@ internal static class Program
     private static void PrintDevices(IReadOnlyList<LinuxEvdevDeviceInfo> devices, DiagnosticKind kind)
     {
         Console.WriteLine("Devices:");
-        LinuxEvdevDeviceInfo[] matching = devices.Where(device => MatchesKind(kind, device.Kind)).ToArray();
-        Console.WriteLine($"  summary: total={matching.Length}, available={matching.Count(static device => device.Descriptor.Availability == InputDeviceAvailability.Available)}, permission-denied={matching.Count(static device => device.Descriptor.Availability == InputDeviceAvailability.PermissionDenied)}");
+        LinuxEvdevDeviceInfo[] matching = [.. devices.Where(device => MatchesKind(kind, device.Kind))];
+
+        var matchingCountAvailable = matching.Count(static device => device.Descriptor.Availability == InputDeviceAvailability.Available);
+        var matchingCountDenied = matching.Count(static device => device.Descriptor.Availability == InputDeviceAvailability.PermissionDenied);
+
+        Console.WriteLine($"  summary: total={matching.Length}, available={matchingCountAvailable}, permission-denied={matchingCountDenied}");
+
         foreach (LinuxEvdevDeviceInfo device in matching)
         {
             Console.WriteLine($"  {device.Kind}: {device.DisplayName}");
@@ -126,40 +130,35 @@ internal static class Program
         }
     }
 
-    private static async Task OpenKeyboardsAsync(
-        LinuxEvdevProviderOptions providerOptions,
-        List<InputDevice> opened,
-        CancellationToken cancellationToken)
+    private static async Task OpenKeyboardsAsync(LinuxEvdevProviderOptions providerOptions,
+        List<InputDevice> opened, CancellationToken cancellationToken)
     {
         LinuxKeyboardProvider provider = new(providerOptions);
         IReadOnlyList<InputDeviceDescriptor> descriptors = await provider.GetDevicesAsync(cancellationToken).ConfigureAwait(false);
+
         foreach (InputDeviceDescriptor descriptor in descriptors.Where(static descriptor => descriptor.Availability == InputDeviceAvailability.Available))
         {
             KeyboardInputDevice keyboard = await provider.OpenAsync(descriptor, new KeyboardOpenOptions(ReceiveText: false), cancellationToken).ConfigureAwait(false);
-            keyboard.KeyChanged += inputEvent =>
-                Console.WriteLine($"keyboard {descriptor.DisplayName}: {inputEvent.Key} {inputEvent.Transition} code={inputEvent.NativeKeyCode} mods={inputEvent.Modifiers}");
+            keyboard.KeyChanged += inputEvent => Console.WriteLine($"keyboard {descriptor.DisplayName}: {inputEvent.Key} {inputEvent.Transition} code={inputEvent.NativeKeyCode} mods={inputEvent.Modifiers}");
             await keyboard.StartAsync(cancellationToken).ConfigureAwait(false);
             opened.Add(keyboard);
         }
     }
 
-    private static async Task OpenMiceAsync(
-        LinuxEvdevProviderOptions providerOptions,
-        List<InputDevice> opened,
-        CancellationToken cancellationToken)
+    private static async Task OpenMiceAsync(LinuxEvdevProviderOptions providerOptions, List<InputDevice> opened, CancellationToken cancellationToken)
     {
         LinuxMouseProvider provider = new(providerOptions);
         IReadOnlyList<InputDeviceDescriptor> descriptors = await provider.GetDevicesAsync(cancellationToken).ConfigureAwait(false);
+
         foreach (InputDeviceDescriptor descriptor in descriptors.Where(static descriptor => descriptor.Availability == InputDeviceAvailability.Available))
         {
             MouseInputDevice mouse = await provider.OpenAsync(descriptor, new MouseOpenOptions(), cancellationToken).ConfigureAwait(false);
-            mouse.Moved += inputEvent =>
-                Console.WriteLine($"mouse {descriptor.DisplayName}: move dx={inputEvent.Position.X} dy={inputEvent.Position.Y} buttons={inputEvent.Buttons}");
-            mouse.ButtonChanged += inputEvent =>
-                Console.WriteLine($"mouse {descriptor.DisplayName}: button {inputEvent.Button} {inputEvent.Transition} buttons={inputEvent.Buttons}");
-            mouse.WheelChanged += inputEvent =>
-                Console.WriteLine($"mouse {descriptor.DisplayName}: wheel {inputEvent.Axis} delta={inputEvent.DeltaNotches} buttons={inputEvent.Buttons}");
+
+            mouse.Moved += inputEvent => Console.WriteLine($"mouse {descriptor.DisplayName}: move dx={inputEvent.Position.X} dy={inputEvent.Position.Y} buttons={inputEvent.Buttons}");
+            mouse.ButtonChanged += inputEvent => Console.WriteLine($"mouse {descriptor.DisplayName}: button {inputEvent.Button} {inputEvent.Transition} buttons={inputEvent.Buttons}");
+            mouse.WheelChanged += inputEvent => Console.WriteLine($"mouse {descriptor.DisplayName}: wheel {inputEvent.Axis} delta={inputEvent.DeltaNotches} buttons={inputEvent.Buttons}");
             await mouse.StartAsync(cancellationToken).ConfigureAwait(false);
+
             opened.Add(mouse);
         }
     }
@@ -187,15 +186,8 @@ internal static class Program
         Mouse,
     }
 
-    private sealed record CommandLineOptions(
-        DiagnosticKind Kind,
-        string InputDirectory,
-        string SysfsInputRoot,
-        bool PrintEvents,
-        bool AcknowledgeRawInput,
-        int DurationMilliseconds,
-        int PollTimeoutMilliseconds,
-        bool ShowHelp)
+    private sealed record CommandLineOptions(DiagnosticKind Kind, string InputDirectory, string SysfsInputRoot, bool PrintEvents,
+        bool AcknowledgeRawInput, int DurationMilliseconds, int PollTimeoutMilliseconds, bool ShowHelp)
     {
         public static CommandLineOptions Parse(string[] args)
         {
@@ -243,15 +235,8 @@ internal static class Program
                 }
             }
 
-            return new CommandLineOptions(
-                kind,
-                inputDirectory,
-                sysfsInputRoot,
-                printEvents,
-                acknowledgeRawInput,
-                durationMilliseconds,
-                pollTimeoutMilliseconds,
-                showHelp);
+            return new CommandLineOptions(kind, inputDirectory, sysfsInputRoot, printEvents, acknowledgeRawInput,
+                durationMilliseconds, pollTimeoutMilliseconds, showHelp);
         }
 
         private static DiagnosticKind ParseKind(string value) =>

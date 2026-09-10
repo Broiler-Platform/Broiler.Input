@@ -8,11 +8,8 @@ namespace Broiler.Input.Text.Android;
 /// <param name="SelectionEnd">End offset of the selection. Equal to the start for a caret.</param>
 /// <param name="ComposingStart">Start of the composing region, or -1 when nothing is composing.</param>
 /// <param name="ComposingEnd">End of the composing region, or -1 when nothing is composing.</param>
-public readonly record struct AndroidEditorSelection(
-    int SelectionStart,
-    int SelectionEnd,
-    int ComposingStart = -1,
-    int ComposingEnd = -1)
+public readonly record struct AndroidEditorSelection(int SelectionStart, int SelectionEnd, 
+    int ComposingStart = -1, int ComposingEnd = -1)
 {
     /// <summary>True when a composing region is active.</summary>
     public bool HasComposingRegion => ComposingStart >= 0 && ComposingEnd >= ComposingStart;

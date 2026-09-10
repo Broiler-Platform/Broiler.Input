@@ -18,19 +18,15 @@ public sealed class LinuxMouseInputDevice : MouseInputDevice
     private CancellationTokenSource? _readCancellation;
     private Task? _readTask;
 
-    public LinuxMouseInputDevice(
-        InputDeviceDescriptor descriptor,
-        MouseOpenOptions options,
-        string eventPath,
-        string eventName,
-        int pollTimeoutMilliseconds,
-        IInputClock? clock = null,
-        LinuxPointerMotionMode motionMode = LinuxPointerMotionMode.Relative)
+    public LinuxMouseInputDevice(InputDeviceDescriptor descriptor, MouseOpenOptions options, string eventPath, string eventName,
+        int pollTimeoutMilliseconds, IInputClock? clock = null, LinuxPointerMotionMode motionMode = LinuxPointerMotionMode.Relative)
         : base(descriptor, clock)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
+
         ArgumentException.ThrowIfNullOrWhiteSpace(eventPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
+
         _eventPath = eventPath;
         _eventName = eventName;
         _pollTimeoutMilliseconds = pollTimeoutMilliseconds <= 0 ? 50 : pollTimeoutMilliseconds;
@@ -46,6 +42,7 @@ public sealed class LinuxMouseInputDevice : MouseInputDevice
             return;
 
         LinuxEventDeviceStream stream = LinuxEventDeviceStream.Open(_eventPath, _eventName);
+
         try
         {
             await base.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -73,8 +70,10 @@ public sealed class LinuxMouseInputDevice : MouseInputDevice
     {
         if (stream.TryGetAbsoluteAxis(primary, out int min, out int max, out int resolution) && max > min)
             return new LinuxAbsAxis(min, max, resolution);
+
         if (stream.TryGetAbsoluteAxis(multitouch, out min, out max, out resolution) && max > min)
             return new LinuxAbsAxis(min, max, resolution);
+
         return default;
     }
 
@@ -91,10 +90,9 @@ public sealed class LinuxMouseInputDevice : MouseInputDevice
 
         await base.StartAsync(cancellationToken).ConfigureAwait(false);
         _readCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        
         LinuxEventDeviceReadLoop loop = new(_stream, _pollTimeoutMilliseconds);
-        _readTask = Task.Run(
-            () => loop.Run(ProcessInputEvent, HandleReadFault, _readCancellation.Token),
-            CancellationToken.None);
+        _readTask = Task.Run(() => loop.Run(ProcessInputEvent, HandleReadFault, _readCancellation.Token), CancellationToken.None);
     }
 
     public override async ValueTask StopAsync(CancellationToken cancellationToken = default)
@@ -137,6 +135,7 @@ public sealed class LinuxMouseInputDevice : MouseInputDevice
     {
         List<LinuxMouseTranslatedEvent> events = [];
         _translator.Process(inputEvent, timestamp => NextEventHeader(timestamp), _options, events);
+        
         foreach (LinuxMouseTranslatedEvent input in events)
         {
             switch (input.Kind)
@@ -168,6 +167,7 @@ public sealed class LinuxMouseInputDevice : MouseInputDevice
     {
         CancellationTokenSource? cancellation = _readCancellation;
         Task? task = _readTask;
+        
         _readCancellation = null;
         _readTask = null;
 

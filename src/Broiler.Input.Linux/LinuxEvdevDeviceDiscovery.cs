@@ -10,9 +10,7 @@ namespace Broiler.Input.Linux;
 
 public static class LinuxEvdevDeviceDiscovery
 {
-    public static IReadOnlyList<LinuxEvdevDeviceInfo> Discover(
-        LinuxEvdevDeviceKind kind,
-        LinuxEvdevProviderOptions? options = null)
+    public static IReadOnlyList<LinuxEvdevDeviceInfo> Discover(LinuxEvdevDeviceKind kind, LinuxEvdevProviderOptions? options = null)
     {
         LinuxEvdevProviderOptions effective = (options ?? new LinuxEvdevProviderOptions()).Normalize();
         List<LinuxEvdevDeviceInfo> devices = [];
@@ -26,37 +24,26 @@ public static class LinuxEvdevDeviceDiscovery
             if (!MatchesKind(kind, capabilities))
                 continue;
 
-            string displayName = ReadFirstLine(Path.Combine(deviceDirectory, "name"))
-                ?? $"{CultureInfo.InvariantCulture.TextInfo.ToTitleCase(kind.ToString().ToLowerInvariant())} {eventName}";
+            string displayName = ReadFirstLine(Path.Combine(deviceDirectory, "name")) ??
+                $"{CultureInfo.InvariantCulture.TextInfo.ToTitleCase(kind.ToString().ToLowerInvariant())} {eventName}";
             string opaqueId = CreateOpaqueId(kind, eventName, displayName, deviceDirectory, capabilities);
-            InputDeviceDescriptor descriptor = new(
-                InputDeviceId.FromOpaqueValue(opaqueId),
-                ToInputKind(kind),
-                displayName,
-                GetAvailability(eventPath),
-                CreateCapabilities(kind, eventName, capabilities));
+            InputDeviceDescriptor descriptor = new(InputDeviceId.FromOpaqueValue(opaqueId), ToInputKind(kind),
+                displayName, GetAvailability(eventPath), CreateCapabilities(kind, eventName, capabilities));
 
-            devices.Add(new LinuxEvdevDeviceInfo(
-                kind,
-                eventName,
-                eventPath,
-                displayName,
-                descriptor,
-                capabilities));
+            devices.Add(new LinuxEvdevDeviceInfo(kind, eventName, eventPath, displayName, descriptor, capabilities));
         }
 
-        return devices.OrderBy(static device => device.EventName, StringComparer.Ordinal).ToArray();
+        return [.. devices.OrderBy(static device => device.EventName, StringComparer.Ordinal)];
     }
 
     public static IReadOnlyList<LinuxEvdevDeviceInfo> DiscoverAll(LinuxEvdevProviderOptions? options = null)
     {
         List<LinuxEvdevDeviceInfo> devices = [];
+
         devices.AddRange(Discover(LinuxEvdevDeviceKind.Keyboard, options));
         devices.AddRange(Discover(LinuxEvdevDeviceKind.Mouse, options));
-        return devices
-            .OrderBy(static device => device.EventName, StringComparer.Ordinal)
-            .ThenBy(static device => device.Kind)
-            .ToArray();
+
+        return [.. devices.OrderBy(static device => device.EventName, StringComparer.Ordinal).ThenBy(static device => device.Kind)];
     }
 
     private static LinuxEvdevCapabilitySet ReadCapabilities(string deviceDirectory)
@@ -103,10 +90,8 @@ public static class LinuxEvdevDeviceDiscovery
         }
     }
 
-    private static IReadOnlyList<InputCapability> CreateCapabilities(
-        LinuxEvdevDeviceKind kind,
-        string eventName,
-        LinuxEvdevCapabilitySet capabilities)
+    private static IReadOnlyList<InputCapability> CreateCapabilities(LinuxEvdevDeviceKind kind,
+        string eventName, LinuxEvdevCapabilitySet capabilities)
     {
         List<InputCapability> values =
         [
@@ -138,12 +123,8 @@ public static class LinuxEvdevDeviceDiscovery
         return values;
     }
 
-    private static string CreateOpaqueId(
-        LinuxEvdevDeviceKind kind,
-        string eventName,
-        string displayName,
-        string deviceDirectory,
-        LinuxEvdevCapabilitySet capabilities)
+    private static string CreateOpaqueId(LinuxEvdevDeviceKind kind, string eventName, string displayName, 
+        string deviceDirectory, LinuxEvdevCapabilitySet capabilities)
     {
         StringBuilder builder = new();
         builder.Append(kind).Append('|')

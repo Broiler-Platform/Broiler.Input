@@ -4,7 +4,8 @@ using Broiler.Input.Windows;
 
 namespace Broiler.Input.Keyboard.Windows;
 
-public sealed class WindowsKeyboardInputDevice : KeyboardInputDevice, IWindowsInputMessageSink
+public sealed class WindowsKeyboardInputDevice(InputDeviceDescriptor descriptor, KeyboardOpenOptions? options = null,
+    IInputClock? clock = null) : KeyboardInputDevice(descriptor, clock ?? WindowsInputClock.Shared), IWindowsInputMessageSink
 {
     private const int VkBack = 0x08;
     private const int VkTab = 0x09;
@@ -39,18 +40,9 @@ public sealed class WindowsKeyboardInputDevice : KeyboardInputDevice, IWindowsIn
     private const int VkF1 = 0x70;
     private const int VkF24 = 0x87;
 
-    private readonly KeyboardOpenOptions _options;
+    private readonly KeyboardOpenOptions _options = options ?? new KeyboardOpenOptions();
     private char? _pendingHighSurrogate;
     private InputTimestamp _pendingHighSurrogateTimestamp;
-
-    public WindowsKeyboardInputDevice(
-        InputDeviceDescriptor descriptor,
-        KeyboardOpenOptions? options = null,
-        IInputClock? clock = null)
-        : base(descriptor, clock ?? WindowsInputClock.Shared)
-    {
-        _options = options ?? new KeyboardOpenOptions();
-    }
 
     public bool ProcessMessage(in WindowsInputMessage message)
     {
@@ -104,24 +96,21 @@ public sealed class WindowsKeyboardInputDevice : KeyboardInputDevice, IWindowsIn
                 return false;
 
             case WindowsMessageIds.ImeStartComposition:
-                RaiseCompositionChanged(new KeyboardCompositionEvent(
-                    NextEventHeader(message.Timestamp),
-                    KeyboardCompositionState.Started,
-                    Detail: "Windows IME composition started."));
+                RaiseCompositionChanged(new KeyboardCompositionEvent(NextEventHeader(message.Timestamp),
+                    KeyboardCompositionState.Started, Detail: "Windows IME composition started."));
+
                 return false;
 
             case WindowsMessageIds.ImeComposition:
-                RaiseCompositionChanged(new KeyboardCompositionEvent(
-                    NextEventHeader(message.Timestamp),
-                    KeyboardCompositionState.Unsupported,
-                    Detail: "Windows IME composition details are not decoded in this milestone."));
+                RaiseCompositionChanged(new KeyboardCompositionEvent(NextEventHeader(message.Timestamp),
+                    KeyboardCompositionState.Unsupported, Detail: "Windows IME composition details are not decoded in this milestone."));
+
                 return false;
 
             case WindowsMessageIds.ImeEndComposition:
-                RaiseCompositionChanged(new KeyboardCompositionEvent(
-                    NextEventHeader(message.Timestamp),
-                    KeyboardCompositionState.Cancelled,
-                    Detail: "Windows IME composition ended."));
+                RaiseCompositionChanged(new KeyboardCompositionEvent(NextEventHeader(message.Timestamp),
+                    KeyboardCompositionState.Cancelled, Detail: "Windows IME composition ended."));
+
                 return false;
 
             default:
@@ -138,19 +127,9 @@ public sealed class WindowsKeyboardInputDevice : KeyboardInputDevice, IWindowsIn
         bool isExtended = ((parameter >> 24) & 0x01) != 0;
         bool wasDown = ((parameter >> 30) & 0x01) != 0;
 
-        RaiseKeyChanged(new KeyboardKeyEvent(
-            NextEventHeader(message.Timestamp),
-            KeyFromVirtualKey(virtualKey),
-            transition,
-            ReadModifiers(),
-            virtualKey,
-            scanCode,
-            repeatCount,
-            isExtended,
-            wasDown,
-            LocationFromVirtualKey(virtualKey, scanCode, isExtended),
-            InputEventSource.Semantic,
-            isSystemKey));
+        RaiseKeyChanged(new KeyboardKeyEvent(NextEventHeader(message.Timestamp), KeyFromVirtualKey(virtualKey),
+            transition, ReadModifiers(), virtualKey, scanCode, repeatCount, isExtended, wasDown,
+            LocationFromVirtualKey(virtualKey, scanCode, isExtended), InputEventSource.Semantic, isSystemKey));
     }
 
     private void DispatchText(in WindowsInputMessage message)
@@ -169,22 +148,15 @@ public sealed class WindowsKeyboardInputDevice : KeyboardInputDevice, IWindowsIn
             return;
 
         FlushPendingSurrogateAsReplacement(message.Timestamp);
-        RaiseDeadKeyInput(new KeyboardDeadKeyEvent(
-            NextEventHeader(message.Timestamp),
-            new string((char)codeUnit, 1),
-            codeUnit,
-            isSystemKey,
-            InputEventSource.Semantic));
+        RaiseDeadKeyInput(new KeyboardDeadKeyEvent(NextEventHeader(message.Timestamp), new string((char)codeUnit, 1),
+            codeUnit, isSystemKey, InputEventSource.Semantic));
     }
 
     private void DispatchLayoutChanged(in WindowsInputMessage message)
     {
         FlushPendingSurrogateAsReplacement(message.Timestamp);
-        RaiseLayoutChanged(new KeyboardLayoutChangedEvent(
-            NextEventHeader(message.Timestamp),
-            message.LParam,
-            unchecked((int)(long)message.WParam),
-            message.LParam.ToInt64().ToString("X", CultureInfo.InvariantCulture),
+        RaiseLayoutChanged(new KeyboardLayoutChangedEvent(NextEventHeader(message.Timestamp), message.LParam,
+            unchecked((int)(long)message.WParam), message.LParam.ToInt64().ToString("X", CultureInfo.InvariantCulture),
             InputEventSource.Semantic));
     }
 
@@ -193,8 +165,10 @@ public sealed class WindowsKeyboardInputDevice : KeyboardInputDevice, IWindowsIn
         if (char.IsHighSurrogate(codeUnit))
         {
             FlushPendingSurrogateAsReplacement(timestamp);
+
             _pendingHighSurrogate = codeUnit;
             _pendingHighSurrogateTimestamp = timestamp;
+
             return;
         }
 
@@ -226,10 +200,8 @@ public sealed class WindowsKeyboardInputDevice : KeyboardInputDevice, IWindowsIn
         EmitText("\uFFFD", timestamp);
     }
 
-    private void EmitText(string text, InputTimestamp timestamp)
-    {
-        RaiseTextInput(new KeyboardTextEvent(NextEventHeader(timestamp), text, false, InputEventSource.Semantic));
-    }
+    private void EmitText(string text, InputTimestamp timestamp) => RaiseTextInput(
+        new KeyboardTextEvent(NextEventHeader(timestamp), text, false, InputEventSource.Semantic));
 
     private static KeyboardModifierState ReadModifiers()
     {
@@ -237,32 +209,41 @@ public sealed class WindowsKeyboardInputDevice : KeyboardInputDevice, IWindowsIn
 
         if (IsKeyDown(VkShift))
             modifiers |= KeyboardModifierState.Shift;
+
         if (IsKeyDown(VkControl))
             modifiers |= KeyboardModifierState.Control;
+
         if (IsKeyDown(VkMenu))
             modifiers |= KeyboardModifierState.Alt;
+
         if (IsKeyDown(VkLShift))
             modifiers |= KeyboardModifierState.Shift | KeyboardModifierState.LeftShift;
+
         if (IsKeyDown(VkRShift))
             modifiers |= KeyboardModifierState.Shift | KeyboardModifierState.RightShift;
+
         if (IsKeyDown(VkLControl))
             modifiers |= KeyboardModifierState.Control | KeyboardModifierState.LeftControl;
+
         if (IsKeyDown(VkRControl))
             modifiers |= KeyboardModifierState.Control | KeyboardModifierState.RightControl;
+
         if (IsKeyDown(VkLMenu))
             modifiers |= KeyboardModifierState.Alt | KeyboardModifierState.LeftAlt;
+
         if (IsKeyDown(VkRMenu))
             modifiers |= KeyboardModifierState.Alt | KeyboardModifierState.RightAlt;
+
         if (IsKeyDown(VkLWin))
             modifiers |= KeyboardModifierState.LeftWindows;
+
         if (IsKeyDown(VkRWin))
             modifiers |= KeyboardModifierState.RightWindows;
 
         return modifiers;
     }
 
-    private static bool IsKeyDown(int virtualKey) =>
-        (WindowsKeyboardNativeMethods.GetKeyState(virtualKey) & unchecked((short)0x8000)) != 0;
+    private static bool IsKeyDown(int virtualKey) => (WindowsKeyboardNativeMethods.GetKeyState(virtualKey) & unchecked((short)0x8000)) != 0;
 
     private static KeyboardKey KeyFromVirtualKey(int virtualKey)
     {
