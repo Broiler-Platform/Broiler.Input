@@ -111,6 +111,13 @@ own codecs, playback, or preview UI.
 
 ## Native boundaries
 
+The Windows and Linux native declarations live in `Broiler.Native.Windows` and
+`Broiler.Native.Linux`. Providers retain their device/session behavior and error
+mapping. A sibling `Broiler.Native` checkout is used through project references;
+set `BroilerNativeRoot` for another source location. Without sources, the build
+uses the packages at `BroilerNativeVersion` (initially `0.1.0-preview.1`). Native
+must be published before the updated Input packages are released.
+
 Windows providers use .NET runtime interop for Win32 Raw Input, QPC timing,
 WASAPI microphone capture, and Media Foundation camera capture. Linux providers
 use libc `open`, `read`, `poll`, and `ioctl` over `/dev/input/event*`. Android

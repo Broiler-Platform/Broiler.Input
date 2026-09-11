@@ -49,7 +49,7 @@ internal static partial class Program
         }
     }
 
-    private static void ProjectsHaveNoPackageReferences()
+    private static void ProjectsOnlyReferenceNativePackages()
     {
         string componentRoot = FindComponentRoot();
         string[] projects = Directory.GetFiles(componentRoot, "*.csproj", SearchOption.AllDirectories);
@@ -57,8 +57,14 @@ internal static partial class Program
         foreach (string project in projects)
         {
             XDocument document = XDocument.Load(project);
-            bool hasPackageReference = document.Descendants("PackageReference").Any();
-            AssertFalse(hasPackageReference, $"PackageReference is not allowed in {Path.GetRelativePath(componentRoot, project)}.");
+            foreach (XElement reference in document.Descendants("PackageReference"))
+            {
+                string? name = (string?)reference.Attribute("Include");
+                AssertTrue(name is "Broiler.Native" or "Broiler.Native.Windows" or "Broiler.Native.Linux",
+                    $"Only shared Native packages are allowed in {Path.GetRelativePath(componentRoot, project)}.");
+                AssertTrue(((string?)reference.Attribute("Condition"))?.StartsWith("!Exists(", StringComparison.Ordinal) == true,
+                    "Native packages must be a fallback when a source checkout is unavailable.");
+            }
         }
     }
 

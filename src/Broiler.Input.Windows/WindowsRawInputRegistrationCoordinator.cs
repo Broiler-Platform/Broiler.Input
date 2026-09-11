@@ -1,3 +1,4 @@
+using static Broiler.Native.Windows.Input.RawInputRegistrationNative;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -10,14 +11,6 @@ namespace Broiler.Input.Windows;
 [SupportedOSPlatform("windows")]
 public sealed class WindowsRawInputRegistrationCoordinator
 {
-    private const ushort GenericDesktopUsagePage = 0x01;
-    private const ushort MouseUsage = 0x02;
-    private const ushort KeyboardUsage = 0x06;
-
-    private const uint RidevRemove = 0x00000001;
-    private const uint RidevNoLegacy = 0x00000030;
-    private const uint RidevInputSink = 0x00000100;
-    private const uint RidevDevNotify = 0x00002000;
 
     private readonly Lock _gate = new();
     private readonly Dictionary<RegistrationKey, WindowsRawInputRegistrationLease> _leases = [];
@@ -106,16 +99,4 @@ public sealed class WindowsRawInputRegistrationCoordinator
 
     private readonly record struct RegistrationKey(ushort UsagePage, ushort Usage);
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct RawInputDevice
-    {
-        public ushort UsagePage;
-        public ushort Usage;
-        public uint Flags;
-        public IntPtr TargetWindow;
-    }
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool RegisterRawInputDevices([In] RawInputDevice[] rawInputDevices, uint deviceCount, uint rawInputDeviceSize);
 }

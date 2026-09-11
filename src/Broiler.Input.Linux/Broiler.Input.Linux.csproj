@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -19,4 +19,10 @@
     <ProjectReference Include="..\Broiler.Input\Broiler.Input.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="$(BroilerNativeRoot)/src/Broiler.Native/Broiler.Native.csproj" Condition="Exists('$(BroilerNativeRoot)/src/Broiler.Native/Broiler.Native.csproj')" />
+    <PackageReference Include="Broiler.Native" Version="$(BroilerNativeVersion)" Condition="!Exists('$(BroilerNativeRoot)/src/Broiler.Native/Broiler.Native.csproj')" />
+    <ProjectReference Include="$(BroilerNativeRoot)/src/Broiler.Native.Linux/Broiler.Native.Linux.csproj" Condition="Exists('$(BroilerNativeRoot)/src/Broiler.Native.Linux/Broiler.Native.Linux.csproj')" />
+    <PackageReference Include="Broiler.Native.Linux" Version="$(BroilerNativeVersion)" Condition="!Exists('$(BroilerNativeRoot)/src/Broiler.Native.Linux/Broiler.Native.Linux.csproj')" />
+  </ItemGroup>
 </Project>

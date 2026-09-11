@@ -57,7 +57,7 @@ internal static partial class Program
             ("windows camera isolation", () => RunSync(WindowsCameraContractsAreIsolated)),
             ("core has no windows references", () => RunSync(CoreHasNoWindowsReferences)),
             ("keyboard mouse no media references", () => RunSync(KeyboardMouseDoNotReferenceCameraOrMicrophone)),
-            ("projects have no package references", () => RunSync(ProjectsHaveNoPackageReferences)),
+            ("projects only reference shared native packages", () => RunSync(ProjectsOnlyReferenceNativePackages)),
             ("pointer modifiers mirror keyboard modifiers", () => RunSync(PointerModifiersMirrorKeyboardModifiers)),
             ("mouse does not reference keyboard", () => RunSync(MouseDoesNotReferenceKeyboard)),
             ("pointer events carry modifiers", () => RunSync(PointerEventsCarryModifiers)),

@@ -1,3 +1,4 @@
+using static Broiler.Native.Windows.PerformanceCounterNative;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
@@ -31,11 +32,4 @@ public sealed partial class WindowsInputClock : IInputClock
         return new InputTimestamp(Stopwatch.GetTimestamp(), Stopwatch.Frequency, StopwatchInputClock.Shared.Name);
     }
 
-    [LibraryImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool QueryPerformanceCounter(out long performanceCount);
-
-    [LibraryImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool QueryPerformanceFrequency(out long frequency);
 }

@@ -1,3 +1,4 @@
+using static Broiler.Native.Windows.Input.RawInputReaderNative;
 using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
@@ -8,10 +9,6 @@ namespace Broiler.Input.Windows;
 [SupportedOSPlatform("windows")]
 public sealed partial class WindowsRawInputReader(IInputClock? clock = null)
 {
-    private const uint RidInput = 0x10000003;
-    private const uint RimTypeMouse = 0;
-    private const uint RimTypeKeyboard = 1;
-    private const ushort MouseMoveAbsolute = 0x0001;
 
     private readonly IInputClock _clock = clock ?? WindowsInputClock.Shared;
 
@@ -70,38 +67,4 @@ public sealed partial class WindowsRawInputReader(IInputClock? clock = null)
         }
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct RawInputHeader
-    {
-        public uint Type;
-        public uint Size;
-        public IntPtr Device;
-        public IntPtr WParam;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct RawMouse
-    {
-        public ushort Flags;
-        public ushort ButtonFlags;
-        public ushort ButtonData;
-        public uint RawButtons;
-        public int LastX;
-        public int LastY;
-        public uint ExtraInformation;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct RawKeyboard
-    {
-        public ushort MakeCode;
-        public ushort Flags;
-        public ushort Reserved;
-        public ushort VKey;
-        public uint Message;
-        public uint ExtraInformation;
-    }
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern uint GetRawInputData(IntPtr rawInput, uint command, IntPtr data, ref uint size, uint headerSize);
 }

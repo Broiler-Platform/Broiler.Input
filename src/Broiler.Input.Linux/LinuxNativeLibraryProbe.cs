@@ -29,10 +29,8 @@ public static class LinuxInputNativeLibraryProbe
             if (string.IsNullOrWhiteSpace(libraryName))
                 continue;
 
-            if (!NativeLibrary.TryLoad(libraryName, out IntPtr handle))
+            if (!Broiler.Native.NativeLibraryProbe.IsAvailable(libraryName))
                 continue;
-
-            NativeLibrary.Free(handle);
             return new LinuxInputNativeLibraryStatus(requirement.Id, requirement.DisplayName,
                 requirement.LibraryNames, IsAvailable: true, LoadedLibraryName: libraryName,
                 Diagnostic: $"{requirement.DisplayName} is available via {libraryName}.");
