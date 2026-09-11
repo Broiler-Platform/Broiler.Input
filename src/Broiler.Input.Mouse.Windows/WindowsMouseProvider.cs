@@ -1,3 +1,4 @@
+using Broiler.Native.Windows;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -75,15 +76,15 @@ public sealed class WindowsMouseProvider(IInputClock? clock = null) : IMouseInpu
         if (targetWindow == IntPtr.Zero)
             throw new ArgumentException("Mouse leave tracking requires a target window.", nameof(targetWindow));
 
-        var tracking = new WindowsMouseNativeMethods.TRACKMOUSEEVENT
+        var tracking = new WindowNative.TRACKMOUSEEVENT
         {
-            CbSize = (uint)Marshal.SizeOf<WindowsMouseNativeMethods.TRACKMOUSEEVENT>(),
-            Flags = TmeLeave,
+            CbSize = (uint)Marshal.SizeOf<WindowNative.TRACKMOUSEEVENT>(),
+            DwFlags = TmeLeave,
             HwndTrack = targetWindow,
-            HoverTime = 0,
+            DwHoverTime = 0,
         };
 
-        if (!WindowsMouseNativeMethods.TrackMouseEvent(ref tracking))
+        if (!WindowNative.TrackMouseEvent(ref tracking))
             throw new Win32Exception(Marshal.GetLastWin32Error(), "TrackMouseEvent failed.");
     }
 

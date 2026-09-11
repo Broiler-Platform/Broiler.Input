@@ -10,10 +10,7 @@
     <AssemblyName>Broiler.Input.Mouse.Windows</AssemblyName>
     <PackageId>Broiler.Input.Mouse.Windows</PackageId>
     <Description>Windows mouse input provider and message translator for Broiler.</Description>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <Configurations>Debug;Release;Debug-Windows;Release-Windows</Configurations>
+    <Configurations>Debug;Release</Configurations>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,8 +18,4 @@
     <ProjectReference Include="..\Broiler.Input.Windows\Broiler.Input.Windows.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="$(BroilerNativeRoot)/src/Broiler.Native.Windows/Broiler.Native.Windows.csproj" Condition="Exists('$(BroilerNativeRoot)/src/Broiler.Native.Windows/Broiler.Native.Windows.csproj')" />
-    <PackageReference Include="Broiler.Native.Windows" Version="$(BroilerNativeVersion)" Condition="!Exists('$(BroilerNativeRoot)/src/Broiler.Native.Windows/Broiler.Native.Windows.csproj')" />
-  </ItemGroup>
 </Project>

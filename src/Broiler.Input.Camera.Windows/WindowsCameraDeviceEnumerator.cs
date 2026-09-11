@@ -1,13 +1,17 @@
+using Broiler.Native.Windows;
+using Broiler.Native.Windows.MediaFoundation;
+using Broiler.Native.Windows.MediaFoundation.Capture;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
-using Broiler.Input;
 
 namespace Broiler.Input.Camera.Windows;
 
+[SupportedOSPlatform("windows")]
 internal static class WindowsCameraDeviceEnumerator
 {
     private const string SymbolicLinkCapability = "windows.mediafoundation.symbolic-link";
@@ -96,7 +100,7 @@ internal static class WindowsCameraDeviceEnumerator
         if (activationFailure is not null)
             throw activationFailure;
 
-        throw WindowsCameraFaults.CreateException(WindowsMediaFoundationNative.E_NOTFOUND, "Selected camera was not found.");
+        throw WindowsCameraFaults.CreateException(ComNative.E_NOTFOUND, "Selected camera was not found.");
     }
 
     public static string? GetNativeSymbolicLink(InputDeviceDescriptor descriptor)
@@ -107,7 +111,7 @@ internal static class WindowsCameraDeviceEnumerator
 
     private static List<ActivateEntry> EnumerateActivates()
     {
-        WindowsCameraFaults.ThrowIfFailed(WindowsMediaFoundationNative.MFCreateAttributes(out IMFAttributes attributes, 1),
+        WindowsCameraFaults.ThrowIfFailed(MediaFoundationPlatformNative.MFCreateAttributes(out IMFAttributes attributes, 1),
             "Media Foundation camera attribute store creation failed.");
         object? attributesObject = attributes;
 
@@ -122,7 +126,7 @@ internal static class WindowsCameraDeviceEnumerator
             WindowsCameraFaults.ThrowIfFailed(attributes.GetGUID(ref sourceType, out _), "Media Foundation camera source filter verification failed.");
             int enumerationResult = WindowsMediaFoundationNative.MFEnumDeviceSources(attributes, out activateArray, out uint count);
 
-            if (enumerationResult == WindowsMediaFoundationNative.MF_E_NO_CAPTURE_DEVICES_AVAILABLE)
+            if (enumerationResult == MediaFoundationPlatformNative.MF_E_NO_CAPTURE_DEVICES_AVAILABLE)
                 return entries;
 
             WindowsCameraFaults.ThrowIfFailed(enumerationResult, "Media Foundation camera enumeration failed.");
@@ -145,7 +149,7 @@ internal static class WindowsCameraDeviceEnumerator
         finally
         {
             if (activateArray != IntPtr.Zero)
-                WindowsMediaFoundationNative.CoTaskMemFree(activateArray);
+                ComNative.CoTaskMemFree(activateArray);
 
             ReleaseComObject(attributesObject);
         }
@@ -161,7 +165,7 @@ internal static class WindowsCameraDeviceEnumerator
 
         try
         {
-            int result = WindowsMediaFoundationNative.MFCreateAttributes(out IMFAttributes attributes, 2);
+            int result = MediaFoundationPlatformNative.MFCreateAttributes(out IMFAttributes attributes, 2);
             WindowsCameraFaults.ThrowIfFailed(result, "Media Foundation camera source attribute store creation failed.");
 
             attributesObject = attributes;
@@ -240,7 +244,7 @@ internal static class WindowsCameraDeviceEnumerator
         finally
         {
             if (value != IntPtr.Zero)
-                WindowsMediaFoundationNative.CoTaskMemFree(value);
+                ComNative.CoTaskMemFree(value);
         }
     }
 

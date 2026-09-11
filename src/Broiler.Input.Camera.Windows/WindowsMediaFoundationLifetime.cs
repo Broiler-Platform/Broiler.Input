@@ -1,9 +1,11 @@
+using Broiler.Native.Windows;
+using Broiler.Native.Windows.MediaFoundation;
 using System;
-using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.Marshalling;
+using System.Runtime.Versioning;
 
 namespace Broiler.Input.Camera.Windows;
 
+[SupportedOSPlatform("windows")]
 internal sealed class MediaFoundationPlatformScope : IDisposable
 {
     private readonly bool _shouldUninitializeCom;
@@ -12,17 +14,17 @@ internal sealed class MediaFoundationPlatformScope : IDisposable
 
     public MediaFoundationPlatformScope()
     {
-        int comResult = WindowsMediaFoundationNative.CoInitializeEx(IntPtr.Zero, WindowsMediaFoundationNative.COINIT_MULTITHREADED);
+        int comResult = ComNative.CoInitializeEx(IntPtr.Zero, ComNative.COINIT_MULTITHREADED);
 
-        if (comResult == WindowsMediaFoundationNative.S_OK || comResult == WindowsMediaFoundationNative.S_FALSE)
+        if (comResult == ComNative.S_OK || comResult == ComNative.S_FALSE)
             _shouldUninitializeCom = true;
-        else if (comResult != WindowsMediaFoundationNative.RPC_E_CHANGED_MODE)
+        else if (comResult != ComNative.RPC_E_CHANGED_MODE)
             throw WindowsCameraFaults.CreateException(comResult, "COM initialization failed.", "COM");
 
         try
         {
-            int result = WindowsMediaFoundationNative.MFStartup(WindowsMediaFoundationNative.MF_VERSION,
-                WindowsMediaFoundationNative.MFSTARTUP_NOSOCKET);
+            int result = MediaFoundationPlatformNative.MFStartup(MediaFoundationPlatformNative.MF_VERSION,
+                MediaFoundationPlatformNative.MFSTARTUP_NOSOCKET);
 
             WindowsCameraFaults.ThrowIfFailed(result, "Media Foundation startup failed.");
             _mediaFoundationStarted = true;
@@ -30,7 +32,7 @@ internal sealed class MediaFoundationPlatformScope : IDisposable
         catch
         {
             if (_shouldUninitializeCom)
-                WindowsMediaFoundationNative.CoUninitialize();
+                ComNative.CoUninitialize();
 
             throw;
         }
@@ -42,10 +44,10 @@ internal sealed class MediaFoundationPlatformScope : IDisposable
             return;
 
         if (_mediaFoundationStarted)
-            _ = WindowsMediaFoundationNative.MFShutdown();
+            _ = MediaFoundationPlatformNative.MFShutdown();
 
         if (_shouldUninitializeCom)
-            WindowsMediaFoundationNative.CoUninitialize();
+            ComNative.CoUninitialize();
 
         _disposed = true;
     }
@@ -60,21 +62,21 @@ internal static class WindowsCameraFaults
     {
         InputErrorCategory category = hresult switch
         {
-            WindowsMediaFoundationNative.E_ACCESSDENIED => InputErrorCategory.PermissionDenied,
-            WindowsMediaFoundationNative.E_NOTFOUND or
-                WindowsMediaFoundationNative.MF_E_NOT_FOUND or
-                WindowsMediaFoundationNative.MF_E_NO_CAPTURE_DEVICES_AVAILABLE or
-                WindowsMediaFoundationNative.MF_E_CAPTURE_SOURCE_NO_VIDEO_STREAM_PRESENT => InputErrorCategory.DeviceNotFound,
-            WindowsMediaFoundationNative.MF_E_VIDEO_DEVICE_LOCKED or
-                WindowsMediaFoundationNative.MF_E_VIDEO_RECORDING_DEVICE_PREEMPTED => InputErrorCategory.DeviceBusy,
-            WindowsMediaFoundationNative.MF_E_INVALIDMEDIATYPE => InputErrorCategory.UnsupportedCapability,
-            WindowsMediaFoundationNative.MF_E_UNSUPPORTED_CAPTURE_DEVICE_PRESENT => InputErrorCategory.UnsupportedCapability,
-            WindowsMediaFoundationNative.MF_E_SHUTDOWN or
-                WindowsMediaFoundationNative.MF_E_VIDEO_RECORDING_DEVICE_INVALIDATED => InputErrorCategory.DeviceRemoved,
-            WindowsMediaFoundationNative.MF_E_PLATFORM_NOT_INITIALIZED or
-                WindowsMediaFoundationNative.MF_E_NOT_INITIALIZED or
-                WindowsMediaFoundationNative.MF_E_NOT_AVAILABLE or
-                WindowsMediaFoundationNative.MF_E_DISABLED_IN_SAFEMODE => InputErrorCategory.HostUnavailable,
+            ComNative.E_ACCESSDENIED => InputErrorCategory.PermissionDenied,
+            ComNative.E_NOTFOUND or
+                MediaFoundationPlatformNative.MF_E_NOT_FOUND or
+                MediaFoundationPlatformNative.MF_E_NO_CAPTURE_DEVICES_AVAILABLE or
+                MediaFoundationPlatformNative.MF_E_CAPTURE_SOURCE_NO_VIDEO_STREAM_PRESENT => InputErrorCategory.DeviceNotFound,
+            MediaFoundationPlatformNative.MF_E_VIDEO_DEVICE_LOCKED or
+                MediaFoundationPlatformNative.MF_E_VIDEO_RECORDING_DEVICE_PREEMPTED => InputErrorCategory.DeviceBusy,
+            MediaFoundationPlatformNative.MF_E_INVALIDMEDIATYPE => InputErrorCategory.UnsupportedCapability,
+            MediaFoundationPlatformNative.MF_E_UNSUPPORTED_CAPTURE_DEVICE_PRESENT => InputErrorCategory.UnsupportedCapability,
+            MediaFoundationPlatformNative.MF_E_SHUTDOWN or
+                MediaFoundationPlatformNative.MF_E_VIDEO_RECORDING_DEVICE_INVALIDATED => InputErrorCategory.DeviceRemoved,
+            MediaFoundationPlatformNative.MF_E_PLATFORM_NOT_INITIALIZED or
+                MediaFoundationPlatformNative.MF_E_NOT_INITIALIZED or
+                MediaFoundationPlatformNative.MF_E_NOT_AVAILABLE or
+                MediaFoundationPlatformNative.MF_E_DISABLED_IN_SAFEMODE => InputErrorCategory.HostUnavailable,
             _ => InputErrorCategory.NativeFailure,
         };
 
@@ -101,24 +103,24 @@ internal static class WindowsCameraFaults
 
     private static string? GetNativeErrorName(int hresult) => hresult switch
     {
-        WindowsMediaFoundationNative.E_ACCESSDENIED => "E_ACCESSDENIED",
-        WindowsMediaFoundationNative.E_NOTFOUND => "E_NOTFOUND",
-        WindowsMediaFoundationNative.RPC_E_CHANGED_MODE => "RPC_E_CHANGED_MODE",
-        WindowsMediaFoundationNative.MF_E_PLATFORM_NOT_INITIALIZED => "MF_E_PLATFORM_NOT_INITIALIZED",
-        WindowsMediaFoundationNative.MF_E_INVALIDMEDIATYPE => "MF_E_INVALIDMEDIATYPE",
-        WindowsMediaFoundationNative.MF_E_NOT_INITIALIZED => "MF_E_NOT_INITIALIZED",
-        WindowsMediaFoundationNative.MF_E_NO_MORE_TYPES => "MF_E_NO_MORE_TYPES",
-        WindowsMediaFoundationNative.MF_E_NOT_FOUND => "MF_E_NOT_FOUND",
-        WindowsMediaFoundationNative.MF_E_NOT_AVAILABLE => "MF_E_NOT_AVAILABLE",
-        WindowsMediaFoundationNative.MF_E_ATTRIBUTENOTFOUND => "MF_E_ATTRIBUTENOTFOUND",
-        WindowsMediaFoundationNative.MF_E_DISABLED_IN_SAFEMODE => "MF_E_DISABLED_IN_SAFEMODE",
-        WindowsMediaFoundationNative.MF_E_SHUTDOWN => "MF_E_SHUTDOWN",
-        WindowsMediaFoundationNative.MF_E_VIDEO_RECORDING_DEVICE_INVALIDATED => "MF_E_VIDEO_RECORDING_DEVICE_INVALIDATED",
-        WindowsMediaFoundationNative.MF_E_VIDEO_RECORDING_DEVICE_PREEMPTED => "MF_E_VIDEO_RECORDING_DEVICE_PREEMPTED",
-        WindowsMediaFoundationNative.MF_E_VIDEO_DEVICE_LOCKED => "MF_E_VIDEO_DEVICE_LOCKED",
-        WindowsMediaFoundationNative.MF_E_NO_CAPTURE_DEVICES_AVAILABLE => "MF_E_NO_CAPTURE_DEVICES_AVAILABLE",
-        WindowsMediaFoundationNative.MF_E_CAPTURE_SOURCE_NO_VIDEO_STREAM_PRESENT => "MF_E_CAPTURE_SOURCE_NO_VIDEO_STREAM_PRESENT",
-        WindowsMediaFoundationNative.MF_E_UNSUPPORTED_CAPTURE_DEVICE_PRESENT => "MF_E_UNSUPPORTED_CAPTURE_DEVICE_PRESENT",
+        ComNative.E_ACCESSDENIED => "E_ACCESSDENIED",
+        ComNative.E_NOTFOUND => "E_NOTFOUND",
+        ComNative.RPC_E_CHANGED_MODE => "RPC_E_CHANGED_MODE",
+        MediaFoundationPlatformNative.MF_E_PLATFORM_NOT_INITIALIZED => "MF_E_PLATFORM_NOT_INITIALIZED",
+        MediaFoundationPlatformNative.MF_E_INVALIDMEDIATYPE => "MF_E_INVALIDMEDIATYPE",
+        MediaFoundationPlatformNative.MF_E_NOT_INITIALIZED => "MF_E_NOT_INITIALIZED",
+        MediaFoundationPlatformNative.MF_E_NO_MORE_TYPES => "MF_E_NO_MORE_TYPES",
+        MediaFoundationPlatformNative.MF_E_NOT_FOUND => "MF_E_NOT_FOUND",
+        MediaFoundationPlatformNative.MF_E_NOT_AVAILABLE => "MF_E_NOT_AVAILABLE",
+        MediaFoundationPlatformNative.MF_E_ATTRIBUTENOTFOUND => "MF_E_ATTRIBUTENOTFOUND",
+        MediaFoundationPlatformNative.MF_E_DISABLED_IN_SAFEMODE => "MF_E_DISABLED_IN_SAFEMODE",
+        MediaFoundationPlatformNative.MF_E_SHUTDOWN => "MF_E_SHUTDOWN",
+        MediaFoundationPlatformNative.MF_E_VIDEO_RECORDING_DEVICE_INVALIDATED => "MF_E_VIDEO_RECORDING_DEVICE_INVALIDATED",
+        MediaFoundationPlatformNative.MF_E_VIDEO_RECORDING_DEVICE_PREEMPTED => "MF_E_VIDEO_RECORDING_DEVICE_PREEMPTED",
+        MediaFoundationPlatformNative.MF_E_VIDEO_DEVICE_LOCKED => "MF_E_VIDEO_DEVICE_LOCKED",
+        MediaFoundationPlatformNative.MF_E_NO_CAPTURE_DEVICES_AVAILABLE => "MF_E_NO_CAPTURE_DEVICES_AVAILABLE",
+        MediaFoundationPlatformNative.MF_E_CAPTURE_SOURCE_NO_VIDEO_STREAM_PRESENT => "MF_E_CAPTURE_SOURCE_NO_VIDEO_STREAM_PRESENT",
+        MediaFoundationPlatformNative.MF_E_UNSUPPORTED_CAPTURE_DEVICE_PRESENT => "MF_E_UNSUPPORTED_CAPTURE_DEVICE_PRESENT",
         _ => null,
     };
 }

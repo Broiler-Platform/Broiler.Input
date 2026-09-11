@@ -10,19 +10,16 @@
     <AssemblyName>Broiler.Input.Keyboard.Windows</AssemblyName>
     <PackageId>Broiler.Input.Keyboard.Windows</PackageId>
     <Description>Windows keyboard input provider and message translator for Broiler.</Description>
+    <Configurations>Debug;Release</Configurations>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <Configurations>Debug;Release;Debug-Windows;Release-Windows</Configurations>
-  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Broiler.Native.Windows" Version="0.1.0-preview.3" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Broiler.Input.Keyboard\Broiler.Input.Keyboard.csproj" />
     <ProjectReference Include="..\Broiler.Input.Windows\Broiler.Input.Windows.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="$(BroilerNativeRoot)/src/Broiler.Native.Windows/Broiler.Native.Windows.csproj" Condition="Exists('$(BroilerNativeRoot)/src/Broiler.Native.Windows/Broiler.Native.Windows.csproj')" />
-    <PackageReference Include="Broiler.Native.Windows" Version="$(BroilerNativeVersion)" Condition="!Exists('$(BroilerNativeRoot)/src/Broiler.Native.Windows/Broiler.Native.Windows.csproj')" />
-  </ItemGroup>
 </Project>

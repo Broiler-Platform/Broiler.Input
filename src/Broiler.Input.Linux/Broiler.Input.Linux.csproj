@@ -11,18 +11,11 @@
     <Description>Shared Linux event-device, native dependency, and diagnostics support for Broiler input providers.</Description>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <Configurations>Debug;Release;Debug-Linux;Release-Linux</Configurations>
-  </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Broiler.Input\Broiler.Input.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="$(BroilerNativeRoot)/src/Broiler.Native/Broiler.Native.csproj" Condition="Exists('$(BroilerNativeRoot)/src/Broiler.Native/Broiler.Native.csproj')" />
-    <PackageReference Include="Broiler.Native" Version="$(BroilerNativeVersion)" Condition="!Exists('$(BroilerNativeRoot)/src/Broiler.Native/Broiler.Native.csproj')" />
-    <ProjectReference Include="$(BroilerNativeRoot)/src/Broiler.Native.Linux/Broiler.Native.Linux.csproj" Condition="Exists('$(BroilerNativeRoot)/src/Broiler.Native.Linux/Broiler.Native.Linux.csproj')" />
-    <PackageReference Include="Broiler.Native.Linux" Version="$(BroilerNativeVersion)" Condition="!Exists('$(BroilerNativeRoot)/src/Broiler.Native.Linux/Broiler.Native.Linux.csproj')" />
+    <PackageReference Include="Broiler.Native.Linux" Version="0.1.0-preview.3" />
   </ItemGroup>
 </Project>

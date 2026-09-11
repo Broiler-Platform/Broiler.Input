@@ -9,10 +9,7 @@
     <AssemblyName>Broiler.Input.Keyboard.Linux</AssemblyName>
     <PackageId>Broiler.Input.Keyboard.Linux</PackageId>
     <Description>Linux evdev keyboard input provider for Broiler.</Description>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <Configurations>Debug;Release;Debug-Linux;Release-Linux</Configurations>
+    <Configurations>Debug;Release</Configurations>
   </PropertyGroup>
 
   <ItemGroup>

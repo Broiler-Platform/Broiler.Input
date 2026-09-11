@@ -1,12 +1,16 @@
+using Broiler.Native.Windows;
+using Broiler.Native.Windows.Wasapi;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace Broiler.Input.Microphone.Windows;
 
+[SupportedOSPlatform("windows")]
 internal static class WindowsMicrophoneEndpointEnumerator
 {
     private const string EndpointIdCapability = "windows.wasapi.endpoint-id";
@@ -66,7 +70,7 @@ internal static class WindowsMicrophoneEndpointEnumerator
         {
             IMMDeviceEnumerator enumerator = CreateEnumerator(out enumeratorObject);
             int result = enumerator.GetDefaultAudioEndpoint(EDataFlow.Capture, ToRole(role), out device);
-            if (result == WindowsWasapiNative.E_NOTFOUND)
+            if (result == ComNative.E_NOTFOUND)
                 return null;
 
             WindowsMicrophoneFaults.ThrowIfFailed(result, "Default microphone endpoint lookup failed.");
@@ -109,7 +113,7 @@ internal static class WindowsMicrophoneEndpointEnumerator
         Guid classId = WindowsWasapiNative.MMDeviceEnumeratorClassId;
         Guid interfaceId = WindowsWasapiNative.IMMDeviceEnumeratorId;
 
-        int result = WindowsWasapiNative.CoCreateInstance(ref classId, IntPtr.Zero, WindowsWasapiNative.CLSCTX_INPROC_SERVER,
+        int result = ComNative.CoCreateInstance(ref classId, IntPtr.Zero, ComNative.CLSCTX_INPROC_SERVER,
                 ref interfaceId, out enumeratorObject);
 
         WindowsMicrophoneFaults.ThrowIfFailed(result, "MMDeviceEnumerator activation failed.");

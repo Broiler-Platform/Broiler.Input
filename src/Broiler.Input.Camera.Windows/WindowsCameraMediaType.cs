@@ -1,6 +1,8 @@
+using Broiler.Native.Windows.MediaFoundation;
 using System;
 using System.Collections.Generic;
 using Broiler.Input.Camera;
+using Broiler.Native.Windows.MediaFoundation.Capture;
 
 namespace Broiler.Input.Camera.Windows;
 
@@ -20,7 +22,7 @@ internal static class WindowsCameraMediaType
         WindowsCameraFaults.ThrowIfFailed(result, "Media Foundation camera media major type lookup failed.");
 
         if (majorType != WindowsMediaFoundationNative.MFMediaTypeVideo)
-            throw WindowsCameraFaults.CreateException(WindowsMediaFoundationNative.MF_E_INVALIDMEDIATYPE, "Camera source returned a non-video media type.");
+            throw WindowsCameraFaults.CreateException(MediaFoundationPlatformNative.MF_E_INVALIDMEDIATYPE, "Camera source returned a non-video media type.");
 
         result = mediaType.GetGUID(ref subtypeKey, out Guid subtype);
 

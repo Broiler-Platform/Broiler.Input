@@ -1,3 +1,4 @@
+using Broiler.Native.Windows;
 using System;
 using Broiler.Input.Windows;
 
@@ -118,8 +119,8 @@ public sealed class WindowsMouseInputDevice(InputDeviceDescriptor descriptor, Mo
 
         if (options.ConvertWheelScreenPointToClient && message.Hwnd != IntPtr.Zero)
         {
-            var point = new WindowsMouseNativeMethods.POINT { X = x, Y = y };
-            if (WindowsMouseNativeMethods.ScreenToClient(message.Hwnd, ref point))
+            var point = new WindowNative.POINT { X = x, Y = y };
+            if (WindowNative.ScreenToClient(message.Hwnd, ref point))
             {
                 x = point.X;
                 y = point.Y;

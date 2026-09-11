@@ -1,10 +1,12 @@
+using Broiler.Input.Windows;
 using System;
+using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
-using Broiler.Input.Windows;
 
 namespace Broiler.Input.Camera.Windows;
 
+[SupportedOSPlatform("windows")]
 public sealed class WindowsCameraInputDevice : CameraInputDevice
 {
     private readonly WindowsCameraCaptureSession _captureSession;

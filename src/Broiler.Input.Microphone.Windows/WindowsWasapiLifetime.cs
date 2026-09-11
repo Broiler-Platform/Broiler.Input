@@ -1,3 +1,5 @@
+using Broiler.Native.Windows;
+using Broiler.Native.Windows.Wasapi;
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
@@ -12,12 +14,12 @@ internal sealed class WindowsComApartmentScope : IDisposable
 
     public static WindowsComApartmentScope Enter()
     {
-        int result = WindowsWasapiNative.CoInitializeEx(IntPtr.Zero, WindowsWasapiNative.COINIT_MULTITHREADED);
+        int result = ComNative.CoInitializeEx(IntPtr.Zero, ComNative.COINIT_MULTITHREADED);
 
-        if (result == WindowsWasapiNative.S_OK || result == WindowsWasapiNative.S_FALSE)
+        if (result == ComNative.S_OK || result == ComNative.S_FALSE)
             return new WindowsComApartmentScope(shouldUninitialize: true);
 
-        if (result == WindowsWasapiNative.RPC_E_CHANGED_MODE)
+        if (result == ComNative.RPC_E_CHANGED_MODE)
             return new WindowsComApartmentScope(shouldUninitialize: false);
 
         throw WindowsMicrophoneFaults.CreateException(result, "COM initialization failed.");
@@ -26,7 +28,7 @@ internal sealed class WindowsComApartmentScope : IDisposable
     public void Dispose()
     {
         if (_shouldUninitialize)
-            WindowsWasapiNative.CoUninitialize();
+            ComNative.CoUninitialize();
     }
 }
 
@@ -38,11 +40,11 @@ internal static class WindowsMicrophoneFaults
     {
         InputErrorCategory category = hresult switch
         {
-            WindowsWasapiNative.E_ACCESSDENIED => InputErrorCategory.PermissionDenied,
+            ComNative.E_ACCESSDENIED => InputErrorCategory.PermissionDenied,
             WindowsWasapiNative.AUDCLNT_E_DEVICE_IN_USE => InputErrorCategory.DeviceBusy,
             WindowsWasapiNative.AUDCLNT_E_UNSUPPORTED_FORMAT => InputErrorCategory.UnsupportedCapability,
             WindowsWasapiNative.AUDCLNT_E_DEVICE_INVALIDATED => InputErrorCategory.DeviceRemoved,
-            WindowsWasapiNative.E_NOTFOUND => InputErrorCategory.DeviceNotFound,
+            ComNative.E_NOTFOUND => InputErrorCategory.DeviceNotFound,
             WindowsWasapiNative.AUDCLNT_E_SERVICE_NOT_RUNNING => InputErrorCategory.HostUnavailable,
             _ => InputErrorCategory.NativeFailure,
         };
@@ -69,10 +71,10 @@ internal static class WindowsMicrophoneFaults
 
     private static string? GetNativeErrorName(int hresult) => hresult switch
     {
-        WindowsWasapiNative.E_ACCESSDENIED => "E_ACCESSDENIED",
-        WindowsWasapiNative.E_NOINTERFACE => "E_NOINTERFACE",
-        WindowsWasapiNative.E_NOTFOUND => "E_NOTFOUND",
-        WindowsWasapiNative.RPC_E_CHANGED_MODE => "RPC_E_CHANGED_MODE",
+        ComNative.E_ACCESSDENIED => "E_ACCESSDENIED",
+        ComNative.E_NOINTERFACE => "E_NOINTERFACE",
+        ComNative.E_NOTFOUND => "E_NOTFOUND",
+        ComNative.RPC_E_CHANGED_MODE => "RPC_E_CHANGED_MODE",
         WindowsWasapiNative.AUDCLNT_E_DEVICE_INVALIDATED => "AUDCLNT_E_DEVICE_INVALIDATED",
         WindowsWasapiNative.AUDCLNT_E_UNSUPPORTED_FORMAT => "AUDCLNT_E_UNSUPPORTED_FORMAT",
         WindowsWasapiNative.AUDCLNT_E_DEVICE_IN_USE => "AUDCLNT_E_DEVICE_IN_USE",

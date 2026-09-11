@@ -1,13 +1,16 @@
+using Broiler.Input.Windows;
+using Broiler.Native.Windows;
+using Broiler.Native.Windows.Wasapi;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Broiler.Input.Windows;
-
 namespace Broiler.Input.Microphone.Windows;
 
+[SupportedOSPlatform("windows")]
 internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDisposable
 {
     private const int WasapiQpcFrequency = 10_000_000;
@@ -139,7 +142,7 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
             }
 
             if (mixFormatPointer != IntPtr.Zero)
-                WindowsWasapiNative.CoTaskMemFree(mixFormatPointer);
+                ComNative.CoTaskMemFree(mixFormatPointer);
 
             ReleaseComObject(captureClientObject);
             ReleaseComObject(audioClientObject);
@@ -151,7 +154,7 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
     private static IAudioClient ActivateAudioClient(IMMDevice endpoint, out object? audioClientObject)
     {
         Guid audioClientId = WindowsWasapiNative.IAudioClientId;
-        int result = endpoint.Activate(ref audioClientId, WindowsWasapiNative.CLSCTX_INPROC_SERVER,
+        int result = endpoint.Activate(ref audioClientId, ComNative.CLSCTX_INPROC_SERVER,
                 IntPtr.Zero, out audioClientObject);
 
         WindowsMicrophoneFaults.ThrowIfFailed(result, "WASAPI audio client activation failed.");

@@ -1,8 +1,10 @@
 using System;
+using System.Runtime.Versioning;
 using System.Threading;
 
 namespace Broiler.Input.Windows;
 
+[SupportedOSPlatform("windows")]
 public sealed class WindowsRawInputRegistrationLease : IDisposable
 {
     private readonly WindowsRawInputRegistrationCoordinator _owner;

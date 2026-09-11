@@ -9,10 +9,7 @@
     <AssemblyName>Broiler.Input.Mouse.Linux</AssemblyName>
     <PackageId>Broiler.Input.Mouse.Linux</PackageId>
     <Description>Linux evdev mouse input provider for Broiler.</Description>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <Configurations>Debug;Release;Debug-Linux;Release-Linux</Configurations>
+    <Configurations>Debug;Release</Configurations>
   </PropertyGroup>
 
   <ItemGroup>

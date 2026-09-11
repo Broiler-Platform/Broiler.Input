@@ -1,3 +1,4 @@
+using Broiler.Native.Windows;
 using System;
 using System.Globalization;
 using Broiler.Input.Windows;
@@ -243,7 +244,7 @@ public sealed class WindowsKeyboardInputDevice(InputDeviceDescriptor descriptor,
         return modifiers;
     }
 
-    private static bool IsKeyDown(int virtualKey) => (WindowsKeyboardNativeMethods.GetKeyState(virtualKey) & unchecked((short)0x8000)) != 0;
+    private static bool IsKeyDown(int virtualKey) => (WindowNative.GetKeyState(virtualKey) & unchecked((short)0x8000)) != 0;
 
     private static KeyboardKey KeyFromVirtualKey(int virtualKey)
     {

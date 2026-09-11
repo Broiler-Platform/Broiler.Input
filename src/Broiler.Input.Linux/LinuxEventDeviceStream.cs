@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using Broiler.Native.Linux.Input;
 using Microsoft.Win32.SafeHandles;
 
 namespace Broiler.Input.Linux;

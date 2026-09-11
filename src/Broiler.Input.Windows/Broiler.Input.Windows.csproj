@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
@@ -10,18 +10,15 @@
     <AssemblyName>Broiler.Input.Windows</AssemblyName>
     <PackageId>Broiler.Input.Windows</PackageId>
     <Description>Shared Windows host, clock, and native lifetime support for Broiler input providers.</Description>
+    <Configurations>Debug;Release</Configurations>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <Configurations>Debug;Release;Debug-Windows;Release-Windows</Configurations>
-  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Broiler.Native.Windows" Version="0.1.0-preview.3" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Broiler.Input\Broiler.Input.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="$(BroilerNativeRoot)/src/Broiler.Native.Windows/Broiler.Native.Windows.csproj" Condition="Exists('$(BroilerNativeRoot)/src/Broiler.Native.Windows/Broiler.Native.Windows.csproj')" />
-    <PackageReference Include="Broiler.Native.Windows" Version="$(BroilerNativeVersion)" Condition="!Exists('$(BroilerNativeRoot)/src/Broiler.Native.Windows/Broiler.Native.Windows.csproj')" />
-  </ItemGroup>
 </Project>

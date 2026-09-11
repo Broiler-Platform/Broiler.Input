@@ -10,11 +10,7 @@
     <AssemblyName>Broiler.Input.Linux.Diagnostic</AssemblyName>
     <IsPackable>false</IsPackable>
     <Description>Linux evdev diagnostic tool for Broiler input development.</Description>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <Configurations>Debug;Release;Debug-Linux;Release-Linux</Configurations>
-    <RuntimeIdentifier Condition="'$(Configuration)' == 'Debug-Linux' Or '$(Configuration)' == 'Release-Linux'">linux-x64</RuntimeIdentifier>
+    <Configurations>Debug;Release</Configurations>
   </PropertyGroup>
 
   <ItemGroup>

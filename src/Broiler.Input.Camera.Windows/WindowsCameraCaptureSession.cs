@@ -1,12 +1,17 @@
+using Broiler.Input.Windows;
+using Broiler.Native.Windows;
+using Broiler.Native.Windows.MediaFoundation;
+using Broiler.Native.Windows.MediaFoundation.Capture;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
-using Broiler.Input.Windows;
 
 namespace Broiler.Input.Camera.Windows;
 
+[SupportedOSPlatform("windows")]
 internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposable
 {
     private const int MediaFoundationTimeFrequency = 10_000_000;
@@ -68,8 +73,8 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
             bool uninitialize = false;
             try
             {
-                int result = WindowsMediaFoundationNative.CoInitializeEx(IntPtr.Zero, WindowsMediaFoundationNative.COINIT_MULTITHREADED);
-                uninitialize = result is WindowsMediaFoundationNative.S_OK or WindowsMediaFoundationNative.S_FALSE;
+                int result = ComNative.CoInitializeEx(IntPtr.Zero, ComNative.COINIT_MULTITHREADED);
+                uninitialize = result is ComNative.S_OK or ComNative.S_FALSE;
                 WindowsCameraFaults.ThrowIfFailed(reader.Flush(VideoStreamIndex), "Camera source reader flush failed.");
             }
             catch (Exception exception)
@@ -79,7 +84,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
             finally
             {
                 if (uninitialize)
-                    WindowsMediaFoundationNative.CoUninitialize();
+                    ComNative.CoUninitialize();
             }
         }
     }
@@ -146,7 +151,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
     private static IMFAttributes CreateSourceReaderAttributes()
     {
         WindowsCameraFaults.ThrowIfFailed(
-            WindowsMediaFoundationNative.MFCreateAttributes(out IMFAttributes attributes, 2),
+            MediaFoundationPlatformNative.MFCreateAttributes(out IMFAttributes attributes, 2),
             "Media Foundation camera source reader attribute store creation failed.");
 
         try
@@ -180,7 +185,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
         for (int index = 0; ; index++)
         {
             int result = reader.GetNativeMediaType(VideoStreamIndex, index, out IMFMediaType nativeType);
-            if (result == WindowsMediaFoundationNative.MF_E_NO_MORE_TYPES)
+            if (result == MediaFoundationPlatformNative.MF_E_NO_MORE_TYPES)
                 break;
 
             WindowsCameraFaults.ThrowIfFailed(result, "Media Foundation camera media type enumeration failed.");
@@ -202,7 +207,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
             }
         }
 
-        throw WindowsCameraFaults.CreateException(WindowsMediaFoundationNative.MF_E_INVALIDMEDIATYPE,
+        throw WindowsCameraFaults.CreateException(MediaFoundationPlatformNative.MF_E_INVALIDMEDIATYPE,
             $"Requested camera format {preferred.Width}x{preferred.Height} {preferred.PixelFormat} {preferred.FrameRateNumerator}/{preferred.FrameRateDenominator} is not available.");
     }
 
@@ -213,7 +218,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
         for (int index = 0; ; index++)
         {
             int result = reader.GetNativeMediaType(VideoStreamIndex, index, out IMFMediaType nativeType);
-            if (result == WindowsMediaFoundationNative.MF_E_NO_MORE_TYPES)
+            if (result == MediaFoundationPlatformNative.MF_E_NO_MORE_TYPES)
                 break;
 
             WindowsCameraFaults.ThrowIfFailed(result, "Media Foundation camera media type enumeration failed.");
@@ -257,7 +262,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
         }
 
         WindowsCameraFaults.ThrowIfFailed(currentResult, "Media Foundation camera current media type lookup failed.");
-        throw WindowsCameraFaults.CreateException(WindowsMediaFoundationNative.MF_E_INVALIDMEDIATYPE, "Camera source did not expose a readable media type.");
+        throw WindowsCameraFaults.CreateException(MediaFoundationPlatformNative.MF_E_INVALIDMEDIATYPE, "Camera source did not expose a readable media type.");
     }
 
     private static CameraFormat SelectNativeMediaType(IMFSourceReader reader, int index)
@@ -291,7 +296,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
         int result = reader.ReadSample(VideoStreamIndex, 0, out _, out SourceReaderFlags streamFlags,
             out long timestamp, out IMFSample? sample);
 
-        if (result == WindowsMediaFoundationNative.MF_E_SHUTDOWN)
+        if (result == MediaFoundationPlatformNative.MF_E_SHUTDOWN)
             throw WindowsCameraFaults.CreateException(result, "The camera source was shut down.");
 
         WindowsCameraFaults.ThrowIfFailed(result, "Media Foundation camera sample read failed.");
@@ -299,7 +304,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
         CameraFrameFlags frameFlags = CameraFrameFlags.None;
 
         if ((streamFlags & SourceReaderFlags.Error) != 0)
-            throw WindowsCameraFaults.CreateException(WindowsMediaFoundationNative.MF_E_SHUTDOWN, "The camera source reader reported an error.");
+            throw WindowsCameraFaults.CreateException(MediaFoundationPlatformNative.MF_E_SHUTDOWN, "The camera source reader reported an error.");
 
         if ((streamFlags & SourceReaderFlags.EndOfStream) != 0)
             frameFlags |= CameraFrameFlags.EndOfStream;
