@@ -22,6 +22,13 @@ Latest-frame mode disposes an older queued frame before accepting a newer one.
 Loss-sensitive mode uses the caller's queue capacity and overflow policy, and
 reports drops in `CameraCaptureStatistics`.
 
+Windows capture and delivery run on separate threads. Slow frame handlers fill
+the bounded queue and apply its overflow policy without blocking native reads.
+Stop/dispose waits for native cleanup and delivery to finish. When called from
+a frame or fault handler, it waits for native cleanup and cancels queued delivery;
+the current handler is allowed to return without waiting on itself. Runtime
+capture failures transition the device to `Faulted` (or `Unavailable` on removal).
+
 Frames carry plane layout, rotation, color space, timestamp, frame number, and
 discontinuity, format-change, end-of-stream, and timestamp-error flags.
 

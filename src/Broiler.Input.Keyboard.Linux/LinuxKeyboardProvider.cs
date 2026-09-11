@@ -12,7 +12,7 @@ public sealed class LinuxKeyboardProvider(LinuxEvdevProviderOptions? options = n
 {
     private readonly LinuxEvdevProviderOptions _options = (options ?? new LinuxEvdevProviderOptions()).Normalize();
     private readonly IInputClock _clock = clock ?? StopwatchInputClock.Shared;
-    private readonly Dictionary<InputDeviceId, LinuxEvdevDeviceInfo> _devices = [];
+    private readonly LinuxEvdevDeviceCache _cache = new(LinuxEvdevDeviceKind.Keyboard, (options ?? new LinuxEvdevProviderOptions()).Normalize());
 
     public event Action<InputDeviceChange>? DeviceChanged;
 
@@ -22,35 +22,16 @@ public sealed class LinuxKeyboardProvider(LinuxEvdevProviderOptions? options = n
     public ValueTask<IReadOnlyList<InputDeviceDescriptor>> GetDevicesAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        IReadOnlyList<LinuxEvdevDeviceInfo> devices = LinuxEvdevDeviceDiscovery.Discover(LinuxEvdevDeviceKind.Keyboard, _options);
-        ReplaceCache(devices);
+        IReadOnlyList<LinuxEvdevDeviceInfo> devices = _cache.Discover();
 
         return ValueTask.FromResult<IReadOnlyList<InputDeviceDescriptor>>([.. devices.Select(static device => device.Descriptor)]);
     }
 
-    public async ValueTask RefreshDevicesAsync(CancellationToken cancellationToken = default)
+    public ValueTask RefreshDevicesAsync(CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<InputDeviceId> previous = [.. _devices.Keys];
-        IReadOnlyList<InputDeviceDescriptor> current = await GetDevicesAsync(cancellationToken).ConfigureAwait(false);
-        HashSet<InputDeviceId> currentIds = current.Select(static descriptor => descriptor.Id).ToHashSet();
-
-        foreach (InputDeviceDescriptor descriptor in current)
-        {
-            InputDeviceChangeKind kind = previous.Contains(descriptor.Id)
-                ? InputDeviceChangeKind.Changed
-                : InputDeviceChangeKind.Added;
-
-            DeviceChanged?.Invoke(new InputDeviceChange(kind, descriptor, _clock.GetTimestamp()));
-        }
-
-        foreach (InputDeviceId removed in previous)
-        {
-            if (currentIds.Contains(removed))
-                continue;
-
-            var inputDeviceDescriptor = new InputDeviceDescriptor(removed, InputKind.Keyboard, removed.Value, InputDeviceAvailability.Removed);
-            DeviceChanged?.Invoke(new InputDeviceChange(InputDeviceChangeKind.Removed, inputDeviceDescriptor, _clock.GetTimestamp()));
-        }
+        cancellationToken.ThrowIfCancellationRequested();
+        _cache.Refresh(_clock, change => DeviceChanged?.Invoke(change));
+        return ValueTask.CompletedTask;
     }
 
     public async ValueTask<KeyboardInputDevice> OpenAsync(InputDeviceDescriptor descriptor, 
@@ -77,23 +58,7 @@ public sealed class LinuxKeyboardProvider(LinuxEvdevProviderOptions? options = n
         return keyboard;
     }
 
-    private LinuxEvdevDeviceInfo ResolveDevice(InputDeviceDescriptor descriptor)
-    {
-        if (_devices.TryGetValue(descriptor.Id, out LinuxEvdevDeviceInfo? device))
-            return device;
-
-        ReplaceCache(LinuxEvdevDeviceDiscovery.Discover(LinuxEvdevDeviceKind.Keyboard, _options));
-        if (_devices.TryGetValue(descriptor.Id, out device))
-            return device;
-
-        throw new LinuxInputException(new InputFault(InputErrorCategory.DeviceNotFound, "Linux keyboard event device was not found.", null, null, "evdev"));
-    }
-
-    private void ReplaceCache(IEnumerable<LinuxEvdevDeviceInfo> devices)
-    {
-        _devices.Clear();
-
-        foreach (LinuxEvdevDeviceInfo device in devices)
-            _devices[device.Descriptor.Id] = device;
-    }
+    private LinuxEvdevDeviceInfo ResolveDevice(InputDeviceDescriptor descriptor) =>
+        _cache.Resolve(descriptor.Id) ?? throw new LinuxInputException(new InputFault(InputErrorCategory.DeviceNotFound,
+            "Linux keyboard event device was not found.", null, null, "evdev"));
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using Broiler.Input;
 
 namespace Broiler.Input.Camera;
@@ -7,6 +8,7 @@ public abstract class CameraInputDevice : InputDevice
 {
     private CameraCaptureState _captureState = CameraCaptureState.Stopped;
     private CameraCaptureStatistics _captureStatistics;
+    private readonly Lock _statisticsGate = new();
 
     protected CameraInputDevice(InputDeviceDescriptor descriptor, IInputClock? clock = null,
         IInputDiagnosticSink? diagnostics = null) : base(descriptor, clock, diagnostics)
@@ -21,7 +23,10 @@ public abstract class CameraInputDevice : InputDevice
 
     public CameraCaptureState CaptureState => _captureState;
 
-    public CameraCaptureStatistics CaptureStatistics => _captureStatistics;
+    public CameraCaptureStatistics CaptureStatistics
+    {
+        get { lock (_statisticsGate) return _captureStatistics; }
+    }
 
     public CameraFormat? NegotiatedFormat { get; private set; }
 
@@ -35,7 +40,10 @@ public abstract class CameraInputDevice : InputDevice
 
     protected void SetNegotiatedFormat(CameraFormat format) => NegotiatedFormat = format ?? throw new ArgumentNullException(nameof(format));
 
-    protected void SetCaptureStatistics(CameraCaptureStatistics statistics) => _captureStatistics = statistics;
+    protected void SetCaptureStatistics(CameraCaptureStatistics statistics)
+    {
+        lock (_statisticsGate) _captureStatistics = statistics;
+    }
 
     protected void TransitionCaptureTo(CameraCaptureState state, InputFault? fault = null)
     {
@@ -52,13 +60,15 @@ public abstract class CameraInputDevice : InputDevice
     {
         ArgumentNullException.ThrowIfNull(fault);
         TransitionCaptureTo(CameraCaptureState.Invalidated, fault);
-        MarkUnavailable(fault);
+        if (State != InputDeviceState.Disposed)
+            MarkUnavailable(fault);
     }
 
     protected void MarkCaptureFaulted(InputFault fault)
     {
         ArgumentNullException.ThrowIfNull(fault);
         TransitionCaptureTo(CameraCaptureState.Faulted, fault);
-        SetFault(fault);
+        if (State != InputDeviceState.Disposed)
+            SetFault(fault);
     }
 }

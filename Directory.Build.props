@@ -4,6 +4,11 @@
   <Import Project="$(MSBuildThisFileDirectory)eng\Broiler.Packaging.props" />
 
   <PropertyGroup>
+    <!-- preview.1 has shipped. Keep the component's next preview floor here
+         so the vendored packaging defaults remain untouched. Publishing
+         advances this further when the feed already contains newer previews. -->
+    <VersionSuffix>preview.2</VersionSuffix>
+
     <BroilerBaseConfiguration Condition="'$(Configuration)' == 'Debug-Linux' Or '$(Configuration)' == 'Debug-Windows'">Debug</BroilerBaseConfiguration>
     <BroilerBaseConfiguration Condition="'$(Configuration)' == 'Release-Linux' Or '$(Configuration)' == 'Release-Windows'">Release</BroilerBaseConfiguration>
     <BroilerTargetOperatingSystem Condition="'$(Configuration)' == 'Debug-Linux' Or '$(Configuration)' == 'Release-Linux'">Linux</BroilerTargetOperatingSystem>

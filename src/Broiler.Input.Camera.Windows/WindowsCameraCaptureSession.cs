@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Broiler.Input;
-using Broiler.Input.Camera;
+using Broiler.Input.Windows;
 
 namespace Broiler.Input.Camera.Windows;
 
@@ -16,180 +15,82 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
     private readonly Lock _gate = new();
     private readonly InputDeviceDescriptor _descriptor;
     private readonly CameraOpenOptions _options;
-    private readonly Action<CameraFrameLease> _deliver;
-    private readonly Action<InputFault> _invalidated;
+    private readonly Action<InputFault> _faulted;
     private readonly Action<CameraFormat> _formatNegotiated;
     private readonly Action<CameraCaptureStatistics> _statisticsChanged;
     private readonly IInputClock _clock;
     private readonly IInputDiagnosticSink _diagnostics;
-    private readonly WindowsCameraDeliveryQueue _deliveryQueue;
+    private readonly WindowsCaptureWorker<CameraFrameLease> _worker;
+    private readonly Lock _statisticsGate = new();
 
-    private Thread? _thread;
-    private TaskCompletionSource<object?>? _started;
     private IMFSourceReader? _sourceReader;
-    private bool _stopRequested;
-    private bool _callbacksEnabled;
-    private bool _disposed;
     private long _capturedCount;
-    private long _deliveredCount;
     private long _formatChangedCount;
     private long _discontinuousCount;
     private long _frameNumber;
 
     public WindowsCameraCaptureSession(InputDeviceDescriptor descriptor, CameraOpenOptions options,
-        Action<CameraFrameLease> deliver, Action<InputFault> invalidated, Action<CameraFormat> formatNegotiated,
+        Action<CameraFrameLease> deliver, Action<InputFault> faulted, Action<CameraFormat> formatNegotiated,
         Action<CameraCaptureStatistics> statisticsChanged, IInputClock clock, IInputDiagnosticSink? diagnostics)
     {
         _descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
         _options = options ?? throw new ArgumentNullException(nameof(options));
-        _deliver = deliver ?? throw new ArgumentNullException(nameof(deliver));
-        _invalidated = invalidated ?? throw new ArgumentNullException(nameof(invalidated));
+        ArgumentNullException.ThrowIfNull(deliver);
+        _faulted = faulted ?? throw new ArgumentNullException(nameof(faulted));
         _formatNegotiated = formatNegotiated ?? throw new ArgumentNullException(nameof(formatNegotiated));
         _statisticsChanged = statisticsChanged ?? throw new ArgumentNullException(nameof(statisticsChanged));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _diagnostics = diagnostics ?? NullInputDiagnosticSink.Shared;
-        _deliveryQueue = new WindowsCameraDeliveryQueue(_options.SessionOptions.DeliveryOptions);
+        _worker = new WindowsCaptureWorker<CameraFrameLease>("Broiler.Input.Camera.Windows.MediaFoundation",
+            _options.SessionOptions.DeliveryOptions, RunCapture, InterruptCapture, deliver, TranslateFailure,
+            exception => _faulted(((InputCameraException)exception).Fault), ReportCallbackFailure, PublishStatistics);
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        ThrowIfDisposed();
-        cancellationToken.ThrowIfCancellationRequested();
+    public Task StartAsync(CancellationToken cancellationToken) => _worker.StartAsync(cancellationToken);
 
-        TaskCompletionSource<object?> started;
+    public void EnableDelivery() => _worker.EnableDelivery();
+
+    public ValueTask StopAsync(CancellationToken cancellationToken) => _worker.StopAsync(cancellationToken);
+
+    public void Dispose() => _worker.Dispose();
+
+    public ValueTask DisposeAsync() => _worker.DisposeAsync();
+
+    private void InterruptCapture()
+    {
+        // The worker runs interruption on a pool thread. Hold the native-lifetime
+        // gate so cleanup cannot release the source reader while it is flushed.
         lock (_gate)
         {
-            if (_thread is { IsAlive: true })
+            if (_sourceReader is not { } reader)
                 return;
 
-            _stopRequested = false;
-            _callbacksEnabled = true;
-            _capturedCount = 0;
-            _deliveredCount = 0;
-            _formatChangedCount = 0;
-            _discontinuousCount = 0;
-            _frameNumber = 0;
-            _started = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
-            started = _started;
-            _thread = new Thread(RunCapture)
-            {
-                IsBackground = true,
-                Name = "Broiler.Input.Camera.Windows.MediaFoundation",
-            };
-            _thread.Start();
-        }
-
-        try
-        {
-            await started.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch
-        {
-            await StopAsync(CancellationToken.None).ConfigureAwait(false);
-            throw;
-        }
-    }
-
-    public ValueTask StopAsync(CancellationToken cancellationToken)
-    {
-        Thread? thread;
-        IMFSourceReader? reader;
-
-        lock (_gate)
-        {
-            _callbacksEnabled = false;
-            _stopRequested = true;
-            thread = _thread;
-            reader = _sourceReader;
-        }
-
-        if (reader is not null)
-            FlushSourceReaderForStop(reader);
-
-        while (thread is { IsAlive: true })
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (thread.Join(25))
-                break;
-        }
-
-        lock (_gate)
-        {
-            if (ReferenceEquals(_thread, thread))
-                _thread = null;
-
-            _deliveryQueue.DisposeAll();
-            PublishStatistics();
-        }
-
-        return ValueTask.CompletedTask;
-    }
-
-    private void FlushSourceReaderForStop(IMFSourceReader reader)
-    {
-        Exception? failure = null;
-
-        var flushThread = new Thread(() =>
-        {
-            bool shouldUninitializeCom = false;
+            bool uninitialize = false;
             try
             {
-                int comResult = WindowsMediaFoundationNative.CoInitializeEx(IntPtr.Zero, WindowsMediaFoundationNative.COINIT_MULTITHREADED);
-                shouldUninitializeCom = comResult == WindowsMediaFoundationNative.S_OK || comResult == WindowsMediaFoundationNative.S_FALSE;
-                reader.Flush(VideoStreamIndex);
+                int result = WindowsMediaFoundationNative.CoInitializeEx(IntPtr.Zero, WindowsMediaFoundationNative.COINIT_MULTITHREADED);
+                uninitialize = result is WindowsMediaFoundationNative.S_OK or WindowsMediaFoundationNative.S_FALSE;
+                WindowsCameraFaults.ThrowIfFailed(reader.Flush(VideoStreamIndex), "Camera source reader flush failed.");
             }
-            catch (Exception exception) when (exception is InvalidCastException or COMException)
+            catch (Exception exception)
             {
-                failure = exception;
+                ReportCallbackFailure(exception);
             }
             finally
             {
-                if (shouldUninitializeCom)
+                if (uninitialize)
                     WindowsMediaFoundationNative.CoUninitialize();
             }
-        })
-        {
-            IsBackground = true,
-            Name = "Broiler.Input.Camera.Windows.SourceReaderFlush",
-        };
-
-        flushThread.SetApartmentState(ApartmentState.MTA);
-        flushThread.Start();
-        flushThread.Join();
-
-        if (failure is not null)
-        {
-            _diagnostics.Write(new InputDiagnosticEvent(InputDiagnosticLevel.Warning, "camera.source_reader.flush_failed",
-                _clock.GetTimestamp(), _descriptor.Id, InputErrorCategory.NativeFailure,
-                new Dictionary<string, string>
-                {
-                    ["exception"] = failure.GetType().FullName ?? failure.GetType().Name,
-                    ["message"] = failure.Message,
-                }));
         }
-    }
-
-    public void Dispose()
-    {
-        if (_disposed)
-            return;
-
-        StopAsync(CancellationToken.None).GetAwaiter().GetResult();
-        _disposed = true;
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_disposed)
-            return;
-
-        await StopAsync(CancellationToken.None).ConfigureAwait(false);
-        _disposed = true;
     }
 
     private void RunCapture()
     {
+        Interlocked.Exchange(ref _capturedCount, 0);
+        Interlocked.Exchange(ref _formatChangedCount, 0);
+        Interlocked.Exchange(ref _discontinuousCount, 0);
+        Interlocked.Exchange(ref _frameNumber, 0);
+
         object? activateObject = null;
         object? mediaSourceObject = null;
         object? sourceReaderAttributesObject = null;
@@ -219,32 +120,16 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
 
             CameraFormat negotiatedFormat = NegotiateFormat(reader);
             _formatNegotiated(negotiatedFormat);
-            _started?.TrySetResult(null);
+            _worker.SignalStarted();
 
-            while (!IsStopRequested())
+            while (!_worker.IsStopRequested)
                 ReadOneFrame(reader, ref negotiatedFormat);
-        }
-        catch (InputCameraException exception)
-        {
-            _started?.TrySetException(exception);
-
-            if (exception.Fault.Category == InputErrorCategory.DeviceRemoved && AreCallbacksEnabled())
-                _invalidated(exception.Fault);
-        }
-        catch (Exception exception)
-        {
-            InputFault fault = new(InputErrorCategory.NativeFailure, "Media Foundation camera capture failed.",
-                exception, nativeFacility: "MediaFoundation");
-
-            _started?.TrySetException(new InputCameraException(fault));
         }
         finally
         {
             lock (_gate)
                 _sourceReader = null;
 
-            _deliveryQueue.DisposeAll();
-            PublishStatistics();
             mediaSource?.Shutdown();
             ReleaseComObject(sourceReaderObject);
             ReleaseComObject(sourceReaderAttributesObject);
@@ -428,7 +313,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
             if (_options.SessionOptions.ReportFormatChanges)
                 frameFlags |= CameraFrameFlags.FormatChanged;
 
-            _formatChangedCount++;
+            Interlocked.Increment(ref _formatChangedCount);
 
             if (reader.GetCurrentMediaType(VideoStreamIndex, out IMFMediaType changedType) >= 0)
             {
@@ -445,7 +330,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
         }
 
         if ((frameFlags & CameraFrameFlags.Discontinuous) != 0)
-            _discontinuousCount++;
+            Interlocked.Increment(ref _discontinuousCount);
 
         if (sample is null)
         {
@@ -503,10 +388,9 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
 
             CameraFrameLease lease = new(bytes, format, WindowsCameraMediaType.CreatePlanes(format, currentLength), frameTimestamp, _frameNumber++, flags);
 
-            _capturedCount++;
+            Interlocked.Increment(ref _capturedCount);
 
-            if (_deliveryQueue.TryEnqueue(lease))
-                DeliverQueuedFrames();
+            _worker.TryEnqueue(lease);
 
             PublishStatistics();
         }
@@ -516,59 +400,29 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
         }
     }
 
-    private void DeliverQueuedFrames()
+    private void PublishStatistics()
     {
-        while (_deliveryQueue.TryDequeue(out CameraFrameLease? frame))
+        lock (_statisticsGate)
         {
-            if (frame is null)
-                continue;
-
-            if (!AreCallbacksEnabled())
-            {
-                frame.Dispose();
-                continue;
-            }
-
-            try
-            {
-                _deliver(frame);
-                _deliveredCount++;
-            }
-            catch (Exception exception)
-            {
-                frame.Dispose();
-                _diagnostics.Write(new InputDiagnosticEvent(InputDiagnosticLevel.Error, "camera.callback.failed",
-                    _clock.GetTimestamp(), _descriptor.Id, InputErrorCategory.NativeFailure,
-                    new Dictionary<string, string>
-                    {
-                        ["exception"] = exception.GetType().FullName ?? exception.GetType().Name,
-                        ["message"] = exception.Message,
-                    }));
-            }
+            InputDeliveryMetrics metrics = _worker.Metrics;
+            _statisticsChanged(new CameraCaptureStatistics(Interlocked.Read(ref _capturedCount), metrics.DequeuedCount,
+                metrics.DroppedNewestCount, metrics.DroppedOldestCount, Interlocked.Read(ref _formatChangedCount), Interlocked.Read(ref _discontinuousCount), metrics.QueueDepth));
         }
     }
 
-    private void PublishStatistics() => 
-        _statisticsChanged(new CameraCaptureStatistics(_capturedCount, _deliveredCount, _deliveryQueue.DroppedNewestCount, 
-            _deliveryQueue.DroppedOldestCount, _formatChangedCount, _discontinuousCount, _deliveryQueue.QueueDepth));
+    private static Exception TranslateFailure(Exception exception) => exception is InputCameraException
+        ? exception
+        : new InputCameraException(new InputFault(InputErrorCategory.NativeFailure,
+            "MediaFoundation camera capture failed.", exception, nativeFacility: "MediaFoundation"));
 
-    private bool IsStopRequested()
-    {
-        lock (_gate)
-            return _stopRequested;
-    }
-
-    private bool AreCallbacksEnabled()
-    {
-        lock (_gate)
-            return _callbacksEnabled;
-    }
-
-    private void ThrowIfDisposed()
-    {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(WindowsCameraCaptureSession));
-    }
+    private void ReportCallbackFailure(Exception exception) =>
+        _diagnostics.Write(new InputDiagnosticEvent(InputDiagnosticLevel.Error, "camera.callback.failed",
+            _clock.GetTimestamp(), _descriptor.Id, InputErrorCategory.NativeFailure,
+            new Dictionary<string, string>
+            {
+                ["exception"] = exception.GetType().FullName ?? exception.GetType().Name,
+                ["message"] = exception.Message,
+            }));
 
     private static bool FormatMatches(CameraFormat expected, CameraFormat actual) =>
         expected.Width == actual.Width &&

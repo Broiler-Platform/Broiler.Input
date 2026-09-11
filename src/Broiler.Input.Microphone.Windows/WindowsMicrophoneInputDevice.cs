@@ -7,19 +7,18 @@ namespace Broiler.Input.Microphone.Windows;
 
 public sealed class WindowsMicrophoneInputDevice : MicrophoneInputDevice
 {
-    private readonly MicrophoneOpenOptions _options;
     private readonly WindowsMicrophoneCaptureSession _captureSession;
 
     public WindowsMicrophoneInputDevice(InputDeviceDescriptor descriptor, MicrophoneOpenOptions options, IInputClock? clock = null,
         IInputDiagnosticSink? diagnostics = null) : base(descriptor, clock ?? WindowsInputClock.Shared, diagnostics)
     {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-        _captureSession = new WindowsMicrophoneCaptureSession(descriptor, _options, RaiseCapturedBuffer, HandleCaptureInvalidated,
+        _captureSession = new WindowsMicrophoneCaptureSession(descriptor, options ?? throw new ArgumentNullException(nameof(options)), RaiseCapturedBuffer, HandleCaptureFault,
             SetCaptureStatistics, clock ?? WindowsInputClock.Shared, diagnostics);
     }
 
     public override async ValueTask StartAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ThrowIfDisposed();
         
         if (State == InputDeviceState.Running)
@@ -35,6 +34,7 @@ public sealed class WindowsMicrophoneInputDevice : MicrophoneInputDevice
             await _captureSession.StartAsync(cancellationToken).ConfigureAwait(false);
             await base.StartAsync(cancellationToken).ConfigureAwait(false);
             TransitionCaptureTo(MicrophoneCaptureState.Running);
+            _captureSession.EnableDelivery();
         }
         catch (InputMicrophoneException exception)
         {
@@ -47,10 +47,22 @@ public sealed class WindowsMicrophoneInputDevice : MicrophoneInputDevice
             
             throw;
         }
+        catch (OperationCanceledException)
+        {
+            await _captureSession.StopAsync(CancellationToken.None).ConfigureAwait(false);
+            TransitionCaptureTo(MicrophoneCaptureState.Stopped);
+            throw;
+        }
+        catch
+        {
+            await _captureSession.StopAsync(CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
     }
 
     public override async ValueTask StopAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ThrowIfDisposed();
         
         if (State != InputDeviceState.Running && CaptureState != MicrophoneCaptureState.Running)
@@ -72,7 +84,8 @@ public sealed class WindowsMicrophoneInputDevice : MicrophoneInputDevice
     public override async ValueTask DisposeAsync()
     {
         await _captureSession.DisposeAsync().ConfigureAwait(false);
-        await base.DisposeAsync().ConfigureAwait(false);
+        base.Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 
     protected override void Dispose(bool disposing)
@@ -91,5 +104,11 @@ public sealed class WindowsMicrophoneInputDevice : MicrophoneInputDevice
             buffer.Dispose();
     }
 
-    private void HandleCaptureInvalidated(InputFault fault) => MarkCaptureInvalidated(fault);
+    private void HandleCaptureFault(InputFault fault)
+    {
+        if (fault.Category == InputErrorCategory.DeviceRemoved)
+            MarkCaptureInvalidated(fault);
+        else
+            MarkCaptureFaulted(fault);
+    }
 }

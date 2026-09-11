@@ -26,6 +26,8 @@ internal static class Program
             ("sysfs discovery classifies a touchpad as an absolute pointer", SysfsDiscoveryClassifiesTouchpad),
             ("mouse translator converts touchpad motion and taps", () => RunSync(MouseTranslatorConvertsTouchpadMotionAndTaps)),
             ("linux providers report refresh add and removal", LinuxProvidersReportRefreshAddAndRemoval),
+            ("linux read loop immediate stop", ReadLoopRegressionTests.ImmediateStop),
+            ("linux read loop callback stop", ReadLoopRegressionTests.StopFromCallback),
             ("linux providers require raw input acknowledgement", LinuxProvidersRequireRawInputAcknowledgement),
             ("keyboard translator maps keys modifiers and repeat", () => RunSync(KeyboardTranslatorMapsKeysModifiersAndRepeat)),
             ("mouse translator maps movement buttons and wheels", () => RunSync(MouseTranslatorMapsMovementButtonsAndWheels)),

@@ -4,6 +4,8 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Broiler.Input.Windows;
+
 namespace Broiler.Input.Microphone.Windows;
 
 internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDisposable
@@ -16,127 +18,59 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
     private readonly Lock _gate = new();
     private readonly InputDeviceDescriptor _descriptor;
     private readonly MicrophoneOpenOptions _options;
-    private readonly Action<MicrophoneBufferLease> _deliver;
-    private readonly Action<InputFault> _invalidated;
+    private readonly Action<InputFault> _faulted;
     private readonly Action<MicrophoneCaptureStatistics> _statisticsChanged;
     private readonly IInputClock _clock;
     private readonly IInputDiagnosticSink _diagnostics;
-    private readonly WindowsMicrophoneDeliveryQueue _deliveryQueue;
+    private readonly WindowsCaptureWorker<MicrophoneBufferLease> _worker;
+    private readonly Lock _statisticsGate = new();
 
-    private Thread? _thread;
-    private TaskCompletionSource<object?>? _started;
     private IntPtr _eventHandle;
-    private bool _stopRequested;
-    private bool _callbacksEnabled;
-    private bool _disposed;
     private long _capturedCount;
-    private long _deliveredCount;
     private long _silentCount;
     private long _discontinuousCount;
 
     public WindowsMicrophoneCaptureSession(InputDeviceDescriptor descriptor, MicrophoneOpenOptions options,
-        Action<MicrophoneBufferLease> deliver, Action<InputFault> invalidated, Action<MicrophoneCaptureStatistics> statisticsChanged,
+        Action<MicrophoneBufferLease> deliver, Action<InputFault> faulted, Action<MicrophoneCaptureStatistics> statisticsChanged,
         IInputClock clock, IInputDiagnosticSink? diagnostics)
     {
         _descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
         _options = options ?? throw new ArgumentNullException(nameof(options));
-        _deliver = deliver ?? throw new ArgumentNullException(nameof(deliver));
-        _invalidated = invalidated ?? throw new ArgumentNullException(nameof(invalidated));
+        ArgumentNullException.ThrowIfNull(deliver);
+        _faulted = faulted ?? throw new ArgumentNullException(nameof(faulted));
         _statisticsChanged = statisticsChanged ?? throw new ArgumentNullException(nameof(statisticsChanged));
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _diagnostics = diagnostics ?? NullInputDiagnosticSink.Shared;
-        _deliveryQueue = new WindowsMicrophoneDeliveryQueue(_options.SessionOptions.DeliveryOptions);
+        _worker = new WindowsCaptureWorker<MicrophoneBufferLease>("Broiler.Input.Microphone.Windows.WASAPI",
+            _options.SessionOptions.DeliveryOptions, RunCapture, InterruptCapture, deliver, TranslateFailure,
+            exception => _faulted(((InputMicrophoneException)exception).Fault), ReportCallbackFailure, PublishStatistics);
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        ThrowIfDisposed();
-        cancellationToken.ThrowIfCancellationRequested();
+    public Task StartAsync(CancellationToken cancellationToken) => _worker.StartAsync(cancellationToken);
 
-        TaskCompletionSource<object?> started;
+    public void EnableDelivery() => _worker.EnableDelivery();
+
+    public ValueTask StopAsync(CancellationToken cancellationToken) => _worker.StopAsync(cancellationToken);
+
+    public void Dispose() => _worker.Dispose();
+
+    public ValueTask DisposeAsync() => _worker.DisposeAsync();
+
+    private void InterruptCapture()
+    {
         lock (_gate)
         {
-            if (_thread is { IsAlive: true })
-                return;
-
-            _stopRequested = false;
-            _callbacksEnabled = true;
-            _capturedCount = 0;
-            _deliveredCount = 0;
-            _silentCount = 0;
-            _discontinuousCount = 0;
-            _started = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
-            started = _started;
-            _thread = new Thread(RunCapture)
-            {
-                IsBackground = true,
-                Name = "Broiler.Input.Microphone.Windows.WASAPI",
-            };
-            _thread.Start();
-        }
-
-        try
-        {
-            await started.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch
-        {
-            await StopAsync(CancellationToken.None).ConfigureAwait(false);
-            throw;
-        }
-    }
-
-    public ValueTask StopAsync(CancellationToken cancellationToken)
-    {
-        Thread? thread;
-        lock (_gate)
-        {
-            _callbacksEnabled = false;
-            _stopRequested = true;
             if (_eventHandle != IntPtr.Zero)
                 WindowsWasapiNative.SetEvent(_eventHandle);
-
-            thread = _thread;
         }
-
-        while (thread is { IsAlive: true })
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (thread.Join(25))
-                break;
-        }
-
-        lock (_gate)
-        {
-            if (ReferenceEquals(_thread, thread))
-                _thread = null;
-            _deliveryQueue.DisposeAll();
-            PublishStatistics();
-        }
-
-        return ValueTask.CompletedTask;
-    }
-
-    public void Dispose()
-    {
-        if (_disposed)
-            return;
-
-        StopAsync(CancellationToken.None).GetAwaiter().GetResult();
-        _disposed = true;
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_disposed)
-            return;
-
-        await StopAsync(CancellationToken.None).ConfigureAwait(false);
-        _disposed = true;
     }
 
     private void RunCapture()
     {
+        Interlocked.Exchange(ref _capturedCount, 0);
+        Interlocked.Exchange(ref _silentCount, 0);
+        Interlocked.Exchange(ref _discontinuousCount, 0);
+
         using WindowsComApartmentScope apartment = WindowsComApartmentScope.Enter();
         object? enumeratorObject = null;
         IMMDevice? endpoint = null;
@@ -154,7 +88,8 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
             MicrophoneFormat actualFormat = GetMixFormat(audioClient, out mixFormatPointer);
             ValidatePreferredFormat(actualFormat);
 
-            _eventHandle = WindowsWasapiNative.CreateEventW(IntPtr.Zero, manualReset: false, initialState: false, name: null);
+            lock (_gate)
+                _eventHandle = WindowsWasapiNative.CreateEventW(IntPtr.Zero, manualReset: false, initialState: false, name: null);
             if (_eventHandle == IntPtr.Zero)
                 throw WindowsMicrophoneFaults.CreateException(Marshal.GetHRForLastWin32Error(), "WASAPI capture event creation failed.");
 
@@ -174,9 +109,9 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
 
             WindowsMicrophoneFaults.ThrowIfFailed(audioClient.Start(), "WASAPI microphone capture start failed.");
             audioStarted = true;
-            _started?.TrySetResult(null);
+            _worker.SignalStarted();
 
-            while (!IsStopRequested())
+            while (!_worker.IsStopRequested)
             {
                 uint waitResult = WindowsWasapiNative.WaitForSingleObject(_eventHandle, 250);
 
@@ -189,34 +124,23 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
                 ReadAvailablePackets(captureClient, actualFormat);
             }
         }
-        catch (InputMicrophoneException exception)
-        {
-            _started?.TrySetException(exception);
-
-            if (exception.Fault.Category == InputErrorCategory.DeviceRemoved && AreCallbacksEnabled())
-                _invalidated(exception.Fault);
-        }
-        catch (Exception exception)
-        {
-            InputFault fault = new(InputErrorCategory.NativeFailure, "WASAPI microphone capture failed.", exception, nativeFacility: "WASAPI");
-            _started?.TrySetException(new InputMicrophoneException(fault));
-        }
         finally
         {
             if (audioStarted && audioClient is not null)
                 audioClient.Stop();
 
-            if (_eventHandle != IntPtr.Zero)
+            lock (_gate)
             {
-                WindowsWasapiNative.CloseHandle(_eventHandle);
-                _eventHandle = IntPtr.Zero;
+                if (_eventHandle != IntPtr.Zero)
+                {
+                    WindowsWasapiNative.CloseHandle(_eventHandle);
+                    _eventHandle = IntPtr.Zero;
+                }
             }
 
             if (mixFormatPointer != IntPtr.Zero)
                 WindowsWasapiNative.CoTaskMemFree(mixFormatPointer);
 
-            _deliveryQueue.DisposeAll();
-            PublishStatistics();
             ReleaseComObject(captureClientObject);
             ReleaseComObject(audioClientObject);
             ReleaseComObject(endpoint);
@@ -300,7 +224,7 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
 
     private void ReadAvailablePackets(IAudioCaptureClient captureClient, MicrophoneFormat format)
     {
-        while (!IsStopRequested())
+        while (!_worker.IsStopRequested)
         {
             int packetResult = captureClient.GetNextPacketSize(out uint framesInNextPacket);
             if (packetResult == WindowsWasapiNative.AUDCLNT_E_DEVICE_INVALIDATED)
@@ -362,75 +286,42 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
 
         MicrophoneBufferLease lease = new(buffer, format, timestamp, checked((long)Math.Min(devicePosition, long.MaxValue)), microphoneFlags);
 
-        _capturedCount++;
+        Interlocked.Increment(ref _capturedCount);
 
         if (silent)
-            _silentCount++;
+            Interlocked.Increment(ref _silentCount);
 
         if (discontinuous)
-            _discontinuousCount++;
+            Interlocked.Increment(ref _discontinuousCount);
 
-        if (_deliveryQueue.TryEnqueue(lease))
-            DeliverQueuedBuffers();
+        _worker.TryEnqueue(lease);
 
         PublishStatistics();
     }
 
-    private void DeliverQueuedBuffers()
+    private void PublishStatistics()
     {
-        while (_deliveryQueue.TryDequeue(out MicrophoneBufferLease? lease))
+        lock (_statisticsGate)
         {
-            if (lease is null)
-                continue;
-
-            if (!AreCallbacksEnabled())
-            {
-                lease.Dispose();
-                continue;
-            }
-
-            try
-            {
-                _deliver(lease);
-                _deliveredCount++;
-            }
-            catch (Exception exception)
-            {
-                lease.Dispose();
-                _diagnostics.Write(new InputDiagnosticEvent(InputDiagnosticLevel.Error, "microphone.callback.failed",
-                    _clock.GetTimestamp(), _descriptor.Id, InputErrorCategory.NativeFailure,
-                    new Dictionary<string, string>
-                    {
-                        ["exception"] = exception.GetType().FullName ?? exception.GetType().Name,
-                        ["message"] = exception.Message,
-                    }));
-            }
+            InputDeliveryMetrics metrics = _worker.Metrics;
+            _statisticsChanged(new MicrophoneCaptureStatistics(Interlocked.Read(ref _capturedCount), metrics.DequeuedCount,
+                metrics.DroppedNewestCount, metrics.DroppedOldestCount, Interlocked.Read(ref _silentCount), Interlocked.Read(ref _discontinuousCount), metrics.QueueDepth));
         }
     }
 
-    private void PublishStatistics()
-    {
-        _statisticsChanged(new MicrophoneCaptureStatistics(_capturedCount, _deliveredCount, _deliveryQueue.DroppedNewestCount,
-            _deliveryQueue.DroppedOldestCount, _silentCount, _discontinuousCount, _deliveryQueue.QueueDepth));
-    }
+    private static Exception TranslateFailure(Exception exception) => exception is InputMicrophoneException
+        ? exception
+        : new InputMicrophoneException(new InputFault(InputErrorCategory.NativeFailure,
+            "WASAPI microphone capture failed.", exception, nativeFacility: "WASAPI"));
 
-    private bool IsStopRequested()
-    {
-        lock (_gate)
-            return _stopRequested;
-    }
-
-    private bool AreCallbacksEnabled()
-    {
-        lock (_gate)
-            return _callbacksEnabled;
-    }
-
-    private void ThrowIfDisposed()
-    {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(WindowsMicrophoneCaptureSession));
-    }
+    private void ReportCallbackFailure(Exception exception) =>
+        _diagnostics.Write(new InputDiagnosticEvent(InputDiagnosticLevel.Error, "microphone.callback.failed",
+            _clock.GetTimestamp(), _descriptor.Id, InputErrorCategory.NativeFailure,
+            new Dictionary<string, string>
+            {
+                ["exception"] = exception.GetType().FullName ?? exception.GetType().Name,
+                ["message"] = exception.Message,
+            }));
 
     private static void ReleaseComObject(object? value)
     {

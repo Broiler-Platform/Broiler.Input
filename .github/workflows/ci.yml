@@ -54,6 +54,9 @@ jobs:
       - name: Test
         run: bash ./eng/run-tests.sh ${{ matrix.configuration }}
 
+      - name: Test preview version selection
+        run: node --test eng/resolve-preview-version.test.mjs
+
       # Proves the packages still build from this commit. No single
       # configuration produces the whole set - Release-Windows omits the three
       # evdev packages and Release-Linux omits the five Windows ones - so both

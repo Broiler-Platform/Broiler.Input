@@ -13,12 +13,13 @@ public sealed class WindowsCameraInputDevice : CameraInputDevice
         IInputDiagnosticSink? diagnostics = null) : base(descriptor, clock ?? WindowsInputClock.Shared, diagnostics)
     {
         _captureSession = new WindowsCameraCaptureSession(descriptor, options ?? throw new ArgumentNullException(nameof(options)),
-            RaiseCapturedFrame, HandleCaptureInvalidated, SetNegotiatedFormat, SetCaptureStatistics,
+            RaiseCapturedFrame, HandleCaptureFault, SetNegotiatedFormat, SetCaptureStatistics,
             clock ?? WindowsInputClock.Shared, diagnostics);
     }
 
     public override async ValueTask StartAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ThrowIfDisposed();
 
         if (State == InputDeviceState.Running)
@@ -34,6 +35,7 @@ public sealed class WindowsCameraInputDevice : CameraInputDevice
             await _captureSession.StartAsync(cancellationToken).ConfigureAwait(false);
             await base.StartAsync(cancellationToken).ConfigureAwait(false);
             TransitionCaptureTo(CameraCaptureState.Running);
+            _captureSession.EnableDelivery();
         }
         catch (InputCameraException exception)
         {
@@ -46,10 +48,22 @@ public sealed class WindowsCameraInputDevice : CameraInputDevice
             
             throw;
         }
+        catch (OperationCanceledException)
+        {
+            await _captureSession.StopAsync(CancellationToken.None).ConfigureAwait(false);
+            TransitionCaptureTo(CameraCaptureState.Stopped);
+            throw;
+        }
+        catch
+        {
+            await _captureSession.StopAsync(CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
     }
 
     public override async ValueTask StopAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ThrowIfDisposed();
         
         if (State != InputDeviceState.Running && CaptureState != CameraCaptureState.Running)
@@ -71,7 +85,8 @@ public sealed class WindowsCameraInputDevice : CameraInputDevice
     public override async ValueTask DisposeAsync()
     {
         await _captureSession.DisposeAsync().ConfigureAwait(false);
-        await base.DisposeAsync().ConfigureAwait(false);
+        base.Dispose(disposing: true);
+        GC.SuppressFinalize(this);
     }
 
     protected override void Dispose(bool disposing)
@@ -90,5 +105,11 @@ public sealed class WindowsCameraInputDevice : CameraInputDevice
             frame.Dispose();
     }
 
-    private void HandleCaptureInvalidated(InputFault fault) => MarkCaptureInvalidated(fault);
+    private void HandleCaptureFault(InputFault fault)
+    {
+        if (fault.Category == InputErrorCategory.DeviceRemoved)
+            MarkCaptureInvalidated(fault);
+        else
+            MarkCaptureFaulted(fault);
+    }
 }

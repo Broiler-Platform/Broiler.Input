@@ -23,7 +23,7 @@ on:
           - nuget
         default: github
       version-suffix:
-        description: 'Override VersionSuffix, e.g. preview.2. Leave empty to use eng/Broiler.Packaging.props.'
+        description: 'Optional preview.N (must be unused and at least the next preview). Empty selects automatically.'
         type: string
         default: ''
       dry-run:
@@ -39,7 +39,8 @@ permissions:
   packages: write
 
 concurrency:
-  group: publish-${{ github.ref }}
+  # Every branch and tag shares the version sequence.
+  group: publish
   cancel-in-progress: false
 
 jobs:
@@ -78,6 +79,9 @@ jobs:
       - name: Test
         run: bash ./eng/run-tests.sh ${{ matrix.configuration }}
 
+      - name: Test preview version selection
+        run: node --test eng/resolve-preview-version.test.mjs
+
   publish:
     name: Publish to ${{ github.event_name == 'push' && 'nuget' || inputs.target }}
     needs: validate
@@ -104,40 +108,10 @@ jobs:
 
       - name: Resolve version
         id: version
-        run: |
-          set -euo pipefail
-          suffix='${{ inputs.version-suffix }}'
-          if [ -n "$suffix" ]; then
-            version_args="-p:VersionSuffix=$suffix"
-          else
-            version_args=""
-          fi
-
-          # eng/Broiler.Packaging.props is the source of truth for the suite
-          # version, so ask MSBuild what it will actually stamp rather than
-          # reconstructing it here.
-          version=$(dotnet msbuild src/Broiler.Input/Broiler.Input.csproj $version_args -getProperty:PackageVersion)
-          version=$(echo "$version" | tr -d '[:space:]')
-
-          if [ -z "$version" ]; then
-            echo "::error::Could not resolve the package version from MSBuild."
-            exit 1
-          fi
-
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "version_args=$version_args" >> "$GITHUB_OUTPUT"
-          echo "Version: $version -> $TARGET (dry-run: $DRY_RUN)"
-
-      - name: Check the tag matches the packaged version
-        if: github.event_name == 'push'
-        run: |
-          set -euo pipefail
-          tag="${GITHUB_REF#refs/tags/}"
-          tag="${tag#v}"
-          if [ "$tag" != "${{ steps.version.outputs.version }}" ]; then
-            echo "::error::Tag '$tag' does not match the packaged version '${{ steps.version.outputs.version }}'. eng/Broiler.Packaging.props is the source of truth for the suite version - update it and commit, or move the tag."
-            exit 1
-          fi
+        env:
+          VERSION_SUFFIX: ${{ inputs.version-suffix }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node eng/resolve-preview-version.mjs
 
       - name: Require a NuGet.org API key
         if: env.TARGET == 'nuget' && env.DRY_RUN != 'true'
@@ -174,7 +148,6 @@ jobs:
           dotnet nuget push artifacts/*.nupkg
           --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
           --api-key ${{ secrets.GITHUB_TOKEN }}
-          --skip-duplicate
           --no-symbols
 
       # Pushing a .nupkg also pushes the .snupkg sitting beside it.
@@ -184,7 +157,6 @@ jobs:
           dotnet nuget push artifacts/*.nupkg
           --source https://api.nuget.org/v3/index.json
           --api-key ${{ secrets.NUGET_API_KEY }}
-          --skip-duplicate
 
       - name: Summary
         run: |

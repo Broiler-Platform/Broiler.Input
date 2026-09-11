@@ -79,7 +79,7 @@ public sealed class LinuxEventDeviceReadLoop(LinuxEventDeviceStream stream, int 
 
                 Buffer.BlockCopy(readBuffer, 0, pending, pendingLength, byteCount);
                 pendingLength += byteCount;
-                DispatchParsedEvents(pending, ref pendingLength, deliver, faulted);
+                DispatchParsedEvents(pending, ref pendingLength, deliver, faulted, cancellationToken);
                 continue;
             }
 
@@ -104,10 +104,10 @@ public sealed class LinuxEventDeviceReadLoop(LinuxEventDeviceStream stream, int 
     }
 
     private static void DispatchParsedEvents(byte[] pending, ref int pendingLength, 
-        Action<LinuxInputEvent> deliver, Action<InputFault> faulted)
+        Action<LinuxInputEvent> deliver, Action<InputFault> faulted, CancellationToken cancellationToken)
     {
         int offset = 0;
-        while (LinuxInputEventParser.TryRead64(pending.AsSpan(offset, pendingLength - offset), out LinuxInputEvent inputEvent, out int consumed))
+        while (!cancellationToken.IsCancellationRequested && LinuxInputEventParser.TryRead64(pending.AsSpan(offset, pendingLength - offset), out LinuxInputEvent inputEvent, out int consumed))
         {
             try
             {

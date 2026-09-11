@@ -15,8 +15,7 @@ public sealed class LinuxMouseInputDevice : MouseInputDevice
     private readonly LinuxPointerMotionMode _motionMode;
     private LinuxMouseEventTranslator _translator = new();
     private LinuxEventDeviceStream? _stream;
-    private CancellationTokenSource? _readCancellation;
-    private Task? _readTask;
+    private readonly LinuxReadLoopSession _readLoop = new();
 
     public LinuxMouseInputDevice(InputDeviceDescriptor descriptor, MouseOpenOptions options, string eventPath, string eventName,
         int pollTimeoutMilliseconds, IInputClock? clock = null, LinuxPointerMotionMode motionMode = LinuxPointerMotionMode.Relative)
@@ -89,23 +88,22 @@ public sealed class LinuxMouseInputDevice : MouseInputDevice
             throw new InvalidOperationException("The Linux mouse event device must be open before it can be started.");
 
         await base.StartAsync(cancellationToken).ConfigureAwait(false);
-        _readCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         
         LinuxEventDeviceReadLoop loop = new(_stream, _pollTimeoutMilliseconds);
-        _readTask = Task.Run(() => loop.Run(ProcessInputEvent, HandleReadFault, _readCancellation.Token), CancellationToken.None);
+        _readLoop.Start(token => loop.Run(ProcessInputEvent, HandleReadFault, token), cancellationToken);
     }
 
     public override async ValueTask StopAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        await StopReadLoopAsync().ConfigureAwait(false);
+        await _readLoop.StopAsync().ConfigureAwait(false);
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public override async ValueTask CloseAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        await StopReadLoopAsync().ConfigureAwait(false);
+        await _readLoop.StopAsync().ConfigureAwait(false);
         _stream?.Dispose();
         _stream = null;
         await base.CloseAsync(cancellationToken).ConfigureAwait(false);
@@ -113,7 +111,7 @@ public sealed class LinuxMouseInputDevice : MouseInputDevice
 
     public override async ValueTask DisposeAsync()
     {
-        await StopReadLoopAsync().ConfigureAwait(false);
+        await _readLoop.StopAsync().ConfigureAwait(false);
         _stream?.Dispose();
         _stream = null;
         await base.DisposeAsync().ConfigureAwait(false);
@@ -123,7 +121,7 @@ public sealed class LinuxMouseInputDevice : MouseInputDevice
     {
         if (disposing)
         {
-            StopReadLoopAsync().AsTask().GetAwaiter().GetResult();
+            _readLoop.StopAsync().AsTask().GetAwaiter().GetResult();
             _stream?.Dispose();
             _stream = null;
         }
@@ -163,26 +161,4 @@ public sealed class LinuxMouseInputDevice : MouseInputDevice
             SetFault(fault);
     }
 
-    private async ValueTask StopReadLoopAsync()
-    {
-        CancellationTokenSource? cancellation = _readCancellation;
-        Task? task = _readTask;
-        
-        _readCancellation = null;
-        _readTask = null;
-
-        if (cancellation is null)
-            return;
-
-        cancellation.Cancel();
-        try
-        {
-            if (task is not null)
-                await task.ConfigureAwait(false);
-        }
-        finally
-        {
-            cancellation.Dispose();
-        }
-    }
 }

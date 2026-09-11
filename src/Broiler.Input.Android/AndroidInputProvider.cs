@@ -65,8 +65,17 @@ public abstract class AndroidInputProvider<TDevice, TOptions>(AndroidUptimeInput
             _openDevices.Remove(id, out openDevice);
         }
 
-        if (openDevice is IAndroidInputDevice removable)
-            removable.NotifyRemoved(AndroidInputFaults.DeviceRemoved(id));
+        if (openDevice is IAndroidInputDevice removable && openDevice.State != InputDeviceState.Disposed)
+        {
+            try
+            {
+                removable.NotifyRemoved(AndroidInputFaults.DeviceRemoved(id));
+            }
+            catch (ObjectDisposedException) when (openDevice.State == InputDeviceState.Disposed)
+            {
+                // The owner disposed the device concurrently with removal.
+            }
+        }
 
         DeviceChanged?.Invoke(new InputDeviceChange(InputDeviceChangeKind.Removed,
             new InputDeviceDescriptor(id, descriptor!.Kind, descriptor.DisplayName, InputDeviceAvailability.Removed),
@@ -87,8 +96,17 @@ public abstract class AndroidInputProvider<TDevice, TOptions>(AndroidUptimeInput
 
         foreach (TDevice device in devices)
         {
-            if (device is IAndroidInputDevice capturable)
-                capturable.NotifyCaptureLost(reason);
+            if (device is IAndroidInputDevice capturable && device.State != InputDeviceState.Disposed)
+            {
+                try
+                {
+                    capturable.NotifyCaptureLost(reason);
+                }
+                catch (ObjectDisposedException) when (device.State == InputDeviceState.Disposed)
+                {
+                    // A snapshot may outlive an owner's device.
+                }
+            }
         }
     }
 
@@ -111,20 +129,26 @@ public abstract class AndroidInputProvider<TDevice, TOptions>(AndroidUptimeInput
             if (!_descriptors.ContainsKey(descriptor.Id))
                 throw new InvalidOperationException(AndroidInputFaults.DeviceNotFound(descriptor.Id).Message);
 
-            if (_openDevices.TryGetValue(descriptor.Id, out TDevice? existing))
-                return ValueTask.FromResult(existing);
+            if (TryGetOpenDevice(descriptor.Id, out TDevice? existing))
+                return ValueTask.FromResult(existing!);
         }
 
         TDevice device = CreateDevice(descriptor, options);
 
         lock (_gate)
         {
-            // Another caller may have opened the same descriptor while the device was being
-            // constructed; keep one device per id so contact tracking is not split across two.
-            if (_openDevices.TryGetValue(descriptor.Id, out TDevice? raced))
+            if (!_descriptors.ContainsKey(descriptor.Id))
             {
                 device.Dispose();
-                return ValueTask.FromResult(raced);
+                throw new InvalidOperationException(AndroidInputFaults.DeviceNotFound(descriptor.Id).Message);
+            }
+
+            // Another caller may have opened the same descriptor while the device was being
+            // constructed; keep one device per id so contact tracking is not split across two.
+            if (TryGetOpenDevice(descriptor.Id, out TDevice? raced))
+            {
+                device.Dispose();
+                return ValueTask.FromResult(raced!);
             }
 
             _openDevices[descriptor.Id] = device;
@@ -137,7 +161,18 @@ public abstract class AndroidInputProvider<TDevice, TOptions>(AndroidUptimeInput
     public bool TryGetOpenDevice(InputDeviceId id, out TDevice? device)
     {
         lock (_gate)
-            return _openDevices.TryGetValue(id, out device);
+        {
+            if (_openDevices.TryGetValue(id, out device))
+            {
+                if (device.State != InputDeviceState.Disposed)
+                    return true;
+
+                _openDevices.Remove(id);
+            }
+
+            device = null;
+            return false;
+        }
     }
 
     /// <summary>Creates the concrete device for a descriptor.</summary>

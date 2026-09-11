@@ -22,6 +22,13 @@ Providers copy native buffers into owned leases before invoking callbacks. The
 callback owns a delivered lease until it disposes it; the provider disposes
 buffers dropped before delivery or observed after shutdown begins.
 
+Windows capture and delivery run on separate threads. Slow buffer handlers fill
+the bounded queue and apply its overflow policy without blocking native reads.
+Stop/dispose waits for native cleanup and delivery to finish. When called from
+a buffer or fault handler, it waits for native cleanup and cancels queued delivery;
+the current handler is allowed to return without waiting on itself. Runtime
+capture failures transition the device to `Faulted` (or `Unavailable` on removal).
+
 Privacy denial maps to `PermissionDenied`, busy endpoints to `DeviceBusy`,
 unsupported formats to `UnsupportedCapability`, removal/invalidation to
 `DeviceRemoved`, and otherwise-unclassified WASAPI failures to `NativeFailure`.

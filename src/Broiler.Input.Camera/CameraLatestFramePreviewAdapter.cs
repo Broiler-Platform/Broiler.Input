@@ -28,23 +28,29 @@ public sealed class CameraLatestFramePreviewAdapter : IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
-            return;
-
-        _device.FrameReady -= OnFrameReady;
         lock (_gate)
         {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            _device.FrameReady -= OnFrameReady;
             _latestFrame?.Dispose();
             _latestFrame = null;
         }
-
-        _disposed = true;
     }
 
     private void OnFrameReady(CameraFrameReadyEvent inputEvent)
     {
         lock (_gate)
         {
+            // Unsubscription cannot recall a delegate already being invoked.
+            if (_disposed)
+            {
+                inputEvent.Frame.Dispose();
+                return;
+            }
+
             _latestFrame?.Dispose();
             _latestFrame = inputEvent.Frame;
         }

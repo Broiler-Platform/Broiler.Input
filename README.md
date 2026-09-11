@@ -200,8 +200,23 @@ dotnet pack Broiler.Input.slnx -c Release-Linux   -o artifacts
 ```
 
 That produces 23 packages plus matching `.snupkg` symbol packages. Version comes
-from `VersionPrefix` and `VersionSuffix` in `eng/Broiler.Packaging.props` and is
-shared by the whole suite.
+from `VersionPrefix` in `eng/Broiler.Packaging.props` and the `VersionSuffix`
+override in `Directory.Build.props` (currently `preview.2`), shared by the suite.
+
+The **Publish** workflow checks the published versions of every packable project
+on NuGet.org and selects a shared version above the highest `preview.N` for the
+configured `VersionPrefix`. For example, a published `0.1.0-preview.1` makes the
+next publish `0.1.0-preview.2`, followed by `preview.3`, and so on. The configured
+preview is the minimum; local packing keeps using the checked-in defaults.
+GitHub Packages publishes also check that destination's versions. Feed lookup
+failures stop publication, and all publish runs share one concurrency group.
+
+Only `preview.N` releases are allowed. Leave the manual `version-suffix` input
+empty for automatic selection, or supply an unused preview at least as high as
+the automatically selected one. A release tag such as `v0.1.0-preview.2` requests
+that exact version and must meet the same requirements; stable and other
+prerelease tags are rejected. Use a manual dry run to inspect the selected
+version and packages before publishing. No source version edit is needed.
 
 ## Documentation
 

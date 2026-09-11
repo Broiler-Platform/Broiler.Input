@@ -12,8 +12,7 @@ public sealed class LinuxKeyboardInputDevice : KeyboardInputDevice
     private readonly int _pollTimeoutMilliseconds;
     private readonly LinuxKeyboardEventTranslator _translator = new();
     private LinuxEventDeviceStream? _stream;
-    private CancellationTokenSource? _readCancellation;
-    private Task? _readTask;
+    private readonly LinuxReadLoopSession _readLoop = new();
 
     public LinuxKeyboardInputDevice(InputDeviceDescriptor descriptor, string eventPath, string eventName,
         int pollTimeoutMilliseconds, IInputClock? clock = null) : base(descriptor, clock)
@@ -60,22 +59,21 @@ public sealed class LinuxKeyboardInputDevice : KeyboardInputDevice
             throw new InvalidOperationException("The Linux keyboard event device must be open before it can be started.");
 
         await base.StartAsync(cancellationToken).ConfigureAwait(false);
-        _readCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         LinuxEventDeviceReadLoop loop = new(_stream, _pollTimeoutMilliseconds);
-        _readTask = Task.Run(() => loop.Run(ProcessInputEvent, HandleReadFault, _readCancellation.Token), CancellationToken.None);
+        _readLoop.Start(token => loop.Run(ProcessInputEvent, HandleReadFault, token), cancellationToken);
     }
 
     public override async ValueTask StopAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        await StopReadLoopAsync().ConfigureAwait(false);
+        await _readLoop.StopAsync().ConfigureAwait(false);
         await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public override async ValueTask CloseAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        await StopReadLoopAsync().ConfigureAwait(false);
+        await _readLoop.StopAsync().ConfigureAwait(false);
         _stream?.Dispose();
         _stream = null;
         await base.CloseAsync(cancellationToken).ConfigureAwait(false);
@@ -83,7 +81,7 @@ public sealed class LinuxKeyboardInputDevice : KeyboardInputDevice
 
     public override async ValueTask DisposeAsync()
     {
-        await StopReadLoopAsync().ConfigureAwait(false);
+        await _readLoop.StopAsync().ConfigureAwait(false);
         _stream?.Dispose();
         _stream = null;
         await base.DisposeAsync().ConfigureAwait(false);
@@ -93,7 +91,7 @@ public sealed class LinuxKeyboardInputDevice : KeyboardInputDevice
     {
         if (disposing)
         {
-            StopReadLoopAsync().AsTask().GetAwaiter().GetResult();
+            _readLoop.StopAsync().AsTask().GetAwaiter().GetResult();
             _stream?.Dispose();
             _stream = null;
         }
@@ -117,25 +115,4 @@ public sealed class LinuxKeyboardInputDevice : KeyboardInputDevice
             SetFault(fault);
     }
 
-    private async ValueTask StopReadLoopAsync()
-    {
-        CancellationTokenSource? cancellation = _readCancellation;
-        Task? task = _readTask;
-        _readCancellation = null;
-        _readTask = null;
-
-        if (cancellation is null)
-            return;
-
-        cancellation.Cancel();
-        try
-        {
-            if (task is not null)
-                await task.ConfigureAwait(false);
-        }
-        finally
-        {
-            cancellation.Dispose();
-        }
-    }
 }
