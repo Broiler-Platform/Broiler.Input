@@ -1,17 +1,5 @@
 name: Publish
 
-# Publishes the twenty-three Broiler.Input packages.
-#
-# No single solution configuration produces the whole set: Release-Windows omits
-# the three evdev packages and Release-Linux omits the five Windows ones, so the
-# publish job packs both and pushes the union. It runs on a Windows host because
-# that host can build every project in the suite - the evdev libraries are plain
-# net10.0 with no runtime identifier - whereas a Linux host cannot build the
-# net10.0-windows providers without extra targeting configuration.
-#
-# Broiler.Input.Testing, Broiler.Input.Linux.Diagnostic, and the *.Tests runners
-# are marked IsPackable=false and are deliberately never published.
-
 on:
   workflow_dispatch:
     inputs:

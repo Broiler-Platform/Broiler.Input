@@ -26,16 +26,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The neutral contracts, the Android backends, and the evdev
-          # providers. This configuration excludes every net10.0-windows
-          # project, so no Windows host is involved.
-          - os: ubuntu-latest
-            configuration: Release-Linux
-          # The neutral contracts, the Android backends, and the Windows
-          # providers. The contract runner targets net10.0-windows, so this is
-          # the only leg that builds and runs it.
           - os: windows-latest
-            configuration: Release-Windows
+            configuration: Release
 
     steps:
       - name: Check out
@@ -57,22 +49,13 @@ jobs:
       - name: Test preview version selection
         run: node --test eng/resolve-preview-version.test.mjs
 
-      # Proves the packages still build from this commit. No single
-      # configuration produces the whole set - Release-Windows omits the three
-      # evdev packages and Release-Linux omits the five Windows ones - so both
-      # are packed here. The Windows host can do both, because the evdev
-      # libraries are plain net10.0 with no runtime identifier. Publishing is a
-      # separate, deliberate action - see .github/workflows/publish.yml.
       - name: Pack
-        if: matrix.os == 'windows-latest'
         run: |
-          dotnet pack Broiler.Input.slnx -c Release-Windows --nologo -o ./artifacts
-          dotnet pack Broiler.Input.slnx -c Release-Linux   --nologo -o ./artifacts
+          dotnet pack Broiler.Input.slnx -c Release --nologo -o ./artifacts
           echo "Packed:"
           ls -1 ./artifacts
 
       - name: Upload packages
-        if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v7
         with:
           name: nuget-packages
