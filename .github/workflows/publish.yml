@@ -59,10 +59,8 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - os: ubuntu-latest
-            configuration: Release-Linux
           - os: windows-latest
-            configuration: Release-Windows
+            configuration: Release
 
     steps:
       - name: Check out
@@ -127,8 +125,7 @@ jobs:
       - name: Pack
         run: |
           set -euo pipefail
-          dotnet pack Broiler.Input.slnx -c Release-Windows --nologo ${{ steps.version.outputs.version_args }} -o ./artifacts
-          dotnet pack Broiler.Input.slnx -c Release-Linux   --nologo ${{ steps.version.outputs.version_args }} -o ./artifacts
+          dotnet pack Broiler.Input.slnx -c Release --nologo ${{ steps.version.outputs.version_args }} -o ./artifacts
           echo "Packed:"
           ls -1 ./artifacts
 
