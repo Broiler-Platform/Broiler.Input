@@ -1,58 +1,34 @@
 #!/usr/bin/env bash
-#
-# Runs the Broiler.Input suites for one solution configuration.
-#
-# The suites are self-hosted console runners, not a test framework, so there is
-# nothing for `dotnet test` to discover. Each runner prints PASS/FAIL per case
-# and returns its failure count as the exit code.
-#
-# Which runners apply depends on the configuration, because the platform suffix
-# decides which provider family the solution builds:
-#
-#   *-Windows        contract runner (net10.0-windows, win-x64) + Android runner
-#   *-Linux          evdev runner    (net10.0, linux-x64)       + Android runner
-#   Debug / Release  Android runner only
-#
-# The Android runner is platform-neutral, so it declares only Debug and Release
-# and the solution maps the suffixed configurations onto those. That is why it
-# starts with the base configuration rather than the suffixed one.
-#
-# Usage: eng/run-tests.sh [configuration]
-#
-# Run it after `dotnet build Broiler.Input.slnx -c <configuration>`. The runners
-# start with --no-build, so they exercise exactly the binaries that build
-# produced, including any -p:VersionSuffix the release workflow passed in.
-
+# Run after dotnet build Broiler.Input.slnx using the same configuration.
+# Tests are self-hosted console runners; dotnet test cannot discover them.
+# The host's platform suite is built explicitly because the solution excludes it.
 set -euo pipefail
 
-configuration="${1:-${CONFIGURATION:-}}"
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
-if [ -z "$configuration" ]; then
-  case "$(uname -s)" in
-    Linux) configuration='Release-Linux' ;;
-    *)     configuration='Release-Windows' ;;
-  esac
-  echo "No configuration given; assuming $configuration on $(uname -s)."
+configuration="${1:-${CONFIGURATION:-Release}}"
+case "$configuration" in
+  Debug|Release) ;;
+  *) echo "Unknown configuration '$configuration'; use Debug or Release." >&2; exit 2 ;;
+esac
+
+version_args=()
+if [ -n "${PACKAGE_VERSION:-}" ]; then
+  version_args+=("-p:Version=$PACKAGE_VERSION" "-p:PackageVersion=$PACKAGE_VERSION")
 fi
 
-base="${configuration%-Windows}"
-base="${base%-Linux}"
-
-if [ "$base" != 'Debug' ] && [ "$base" != 'Release' ]; then
-  echo "Unknown configuration '$configuration'." >&2
-  exit 2
-fi
-
-failed=''
-
+failed=
 run_suite() {
   local name="$1"
-  local project="$2"
-  local suite_configuration="$3"
-
+  local project="src/tests/$name/$name.csproj"
   echo
-  echo "=== $name suite ($suite_configuration) ==="
-  if dotnet run --project "$project" -c "$suite_configuration" --no-build; then
+  echo "=== $name ($configuration) ==="
+  if [[ "${2:-}" == --build ]] && ! dotnet build "$project" -c "$configuration" --nologo "${version_args[@]}"; then
+    echo "FAIL $name (build)" >&2
+    failed="$failed $name"
+    return
+  fi
+  if dotnet run --project "$project" -c "$configuration" --no-build; then
     echo "OK   $name"
   else
     echo "FAIL $name" >&2
@@ -60,27 +36,20 @@ run_suite() {
   fi
 }
 
-case "$configuration" in
-  *-Windows)
-    run_suite 'contract' \
-      'src/tests/Broiler.Input.Contract.Tests/Broiler.Input.Contract.Tests.csproj' \
-      "$configuration"
-    ;;
-  *-Linux)
-    run_suite 'linux' \
-      'src/tests/Broiler.Input.Linux.Tests/Broiler.Input.Linux.Tests.csproj' \
-      "$configuration"
-    ;;
-esac
+for suite in \
+  Broiler.Input.Android.Tests; do
+  run_suite "$suite"
+done
 
-run_suite 'android' \
-  'src/tests/Broiler.Input.Android.Tests/Broiler.Input.Android.Tests.csproj' \
-  "$base"
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) run_suite Broiler.Input.Contract.Tests --build ;;
+  Linux*) run_suite Broiler.Input.Linux.Tests --build ;;
+  *) echo 'Skipping platform suites: Windows or Linux is required.' ;;
+esac
 
 echo
 if [ -n "$failed" ]; then
   echo "Failed suites:$failed" >&2
   exit 1
 fi
-
 echo 'All suites passed.'

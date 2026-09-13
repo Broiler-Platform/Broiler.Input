@@ -49,10 +49,14 @@ internal static partial class Program
         }
     }
 
-    private static void ProjectsOnlyReferenceNativePackages()
+    private static void ProjectsUseDeclaredPackages()
     {
         string componentRoot = FindComponentRoot();
         string[] projects = Directory.GetFiles(componentRoot, "*.csproj", SearchOption.AllDirectories);
+        XDocument versions = XDocument.Load(Path.Combine(componentRoot, "Directory.Packages.props"));
+        HashSet<string> declared = versions.Descendants("PackageVersion")
+            .Select(reference => (string)reference.Attribute("Include")!)
+            .ToHashSet(StringComparer.Ordinal);
 
         foreach (string project in projects)
         {
@@ -60,10 +64,15 @@ internal static partial class Program
             foreach (XElement reference in document.Descendants("PackageReference"))
             {
                 string? name = (string?)reference.Attribute("Include");
-                AssertTrue(name is "Broiler.Native" or "Broiler.Native.Windows" or "Broiler.Native.Linux",
-                    $"Only shared Native packages are allowed in {Path.GetRelativePath(componentRoot, project)}.");
-                AssertTrue(((string?)reference.Attribute("Condition"))?.StartsWith("!Exists(", StringComparison.Ordinal) == true,
-                    "Native packages must be a fallback when a source checkout is unavailable.");
+                bool native = name is "Broiler.Native" or "Broiler.Native.Windows" or "Broiler.Native.Linux";
+                bool cameraMedia = Path.GetFileNameWithoutExtension(project) == "Broiler.Input.Camera.Windows"
+                    && name is "Broiler.Media.Video.MediaFoundation" or "Broiler.Media.Video.Windows";
+                AssertTrue(native || cameraMedia,
+                    $"Unexpected package dependency in {Path.GetRelativePath(componentRoot, project)}: {name}.");
+                AssertTrue(name is not null && declared.Contains(name) && reference.Attribute("Version") is null,
+                    "Package versions must be declared in Directory.Packages.props.");
+                AssertTrue(reference.Attribute("Condition") is null,
+                    "Package dependencies must not vary with sibling checkouts.");
             }
         }
     }

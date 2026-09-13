@@ -113,9 +113,8 @@ own codecs, playback, or preview UI.
 
 The Windows and Linux native declarations live in `Broiler.Native.Windows` and
 `Broiler.Native.Linux`. Providers retain their device/session behavior and error
-mapping. A sibling `Broiler.Native` checkout is used through project references;
-set `BroilerNativeRoot` for another source location. Without sources, the build
-uses the packages at `BroilerNativeVersion` (initially `0.1.0-preview.1`). Native
+mapping. Versions are managed in `Directory.Packages.props`; sibling checkouts
+do not replace package references. Native and the camera provider's Media dependencies
 must be published before the updated Input packages are released.
 
 Windows providers use .NET runtime interop for Win32 Raw Input, QPC timing,
@@ -129,101 +128,35 @@ Background Raw Input and evdev event streaming require explicit acknowledgement.
 Diagnostics must not emit typed text, movement timelines, or native device
 paths by default.
 
-## Build
+## Build and validation
 
-The solution carries six configurations. The platform-suffixed ones select which
-provider family participates, so the neutral contracts stay buildable on a host
-that has neither Windows nor Linux backends available:
-
-| Configuration | Builds |
-| --- | --- |
-| `Debug` / `Release` | Neutral contracts, the Android backends, and their tests |
-| `Debug-Windows` / `Release-Windows` | The above plus the Windows providers and the contract tests |
-| `Debug-Linux` / `Release-Linux` | The above plus the Linux providers, the evdev diagnostic tool, and the Linux tests |
+Use the .NET 10 SDK and the standard `Debug` or `Release` configuration:
 
 ```bash
-dotnet build Broiler.Input.slnx -c Release-Windows
+dotnet build Broiler.Input.slnx -c Release
+bash ./eng/run-tests.sh Release
 ```
 
-A plain `dotnet build Broiler.Input.slnx` uses `Debug`, which deliberately skips
-every Windows and Linux provider. Projects that carry no platform suffix declare
-only `Debug` and `Release`, so the solution maps `*-Windows` and `*-Linux` onto
-those base configurations — a neutral project built under `Release-Linux` still
-writes to `bin/Release`.
+The solution builds the neutral contracts and Android providers. The test script
+also builds and runs the contract suite on Windows or the evdev suite on Linux.
+These are console runners, so `dotnet test` does not discover them. The contract
+suite verifies the public API against `docs/api-baseline.txt`. Optional device
+checks are described in [hardware validation](docs/hardware-validation.md).
 
-## Validation
-
-The suites are self-hosted console runners, not a test framework, so there is
-nothing for `dotnet test` to discover. `eng/run-tests.sh` starts the ones that
-apply to a configuration and is what CI calls:
-
-```bash
-dotnet build Broiler.Input.slnx -c Release-Windows --nologo
-bash ./eng/run-tests.sh Release-Windows
-```
-
-The individual runners are below.
-
-The contract runner is deterministic and hardware-free. It is a Windows target,
-so it builds under the `-Windows` configurations:
-
-```powershell
-dotnet build Broiler.Input.slnx -c Release-Windows
-dotnet run --project src\tests\Broiler.Input.Contract.Tests\Broiler.Input.Contract.Tests.csproj -c Release-Windows --no-build
-```
-
-The Android translation, provider lifecycle, and boundary tests run on any host,
-because the Android backends carry no Android SDK dependency. That runner is
-platform-neutral, so it uses the base `Release` configuration even when the
-solution was built as `Release-Windows`:
+## Packing and publishing
 
 ```sh
-dotnet run --project src/tests/Broiler.Input.Android.Tests/Broiler.Input.Android.Tests.csproj -c Release
+pwsh -File eng/pack.ps1
 ```
 
-The Linux runner needs the `-Linux` configurations and a Linux host:
+This produces all 23 packages, including the Windows and Linux providers excluded
+from the normal solution build. The dependencies-only meta-package has no symbols;
+runtime packages include `.snupkg` files. CI tests Linux and Windows; Publish reuses
+CI, verifies consumer restore, and publishes those artifacts. Manual runs default
+to a dry run with automatic preview selection.
 
-```sh
-dotnet run --project src/tests/Broiler.Input.Linux.Tests/Broiler.Input.Linux.Tests.csproj -c Release-Linux
-```
-
-The executable public API baseline remains at
-[`docs/api-baseline.txt`](https://github.com/Broiler-Platform/Broiler.Input/blob/main/docs/api-baseline.txt);
-the contract-test project copies that file into its output and compares it with
-the runtime assemblies.
-
-Opt-in device checks and privacy gates are in
-[hardware validation](https://github.com/Broiler-Platform/Broiler.Input/blob/main/docs/hardware-validation.md).
-
-## Packing
-
-Packing is per configuration, because each one contributes a different provider
-family. Both runs emit the neutral packages; the builds are deterministic, so
-the second run reproduces the first byte for byte:
-
-```bash
-dotnet pack Broiler.Input.slnx -c Release-Windows -o artifacts
-dotnet pack Broiler.Input.slnx -c Release-Linux   -o artifacts
-```
-
-That produces 23 packages plus matching `.snupkg` symbol packages. Version comes
-from `VersionPrefix` in `eng/Broiler.Packaging.props` and the `VersionSuffix`
-override in `Directory.Build.props` (currently `preview.2`), shared by the suite.
-
-The **Publish** workflow checks the published versions of every packable project
-on NuGet.org and selects a shared version above the highest `preview.N` for the
-configured `VersionPrefix`. For example, a published `0.1.0-preview.1` makes the
-next publish `0.1.0-preview.2`, followed by `preview.3`, and so on. The configured
-preview is the minimum; local packing keeps using the checked-in defaults.
-GitHub Packages publishes also check that destination's versions. Feed lookup
-failures stop publication, and all publish runs share one concurrency group.
-
-Only `preview.N` releases are allowed. Leave the manual `version-suffix` input
-empty for automatic selection, or supply an unused preview at least as high as
-the automatically selected one. A release tag such as `v0.1.0-preview.2` requests
-that exact version and must meet the same requirements; stable and other
-prerelease tags are rejected. Use a manual dry run to inspect the selected
-version and packages before publishing. No source version edit is needed.
+See [CI, packages, and releases](docs/packaging.md) for central dependency versions,
+GitHub Packages credentials, NuGet.org setup, and preview tags.
 
 ## Documentation
 

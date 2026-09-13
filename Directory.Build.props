@@ -30,14 +30,9 @@
          above and are deliberately not restated here. -->
     <PackageProjectUrl>https://github.com/Broiler-Platform/Broiler.Input</PackageProjectUrl>
     <PackageTags>broiler;input;devices</PackageTags>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
-  </PropertyGroup>
-  <PropertyGroup>
-    <BroilerNativeRoot Condition="'$(BroilerNativeRoot)' == '' And Exists('$(MSBuildThisFileDirectory)../Broiler.Native/src')">$(MSBuildThisFileDirectory)../Broiler.Native</BroilerNativeRoot>
-    <!-- Native projects are outside this solution; retain the caller's configuration. -->
-    <ShouldUnsetParentConfigurationAndPlatform>false</ShouldUnsetParentConfigurationAndPlatform>
-    <BroilerNativeVersion Condition="'$(BroilerNativeVersion)' == ''">0.1.0-preview.1</BroilerNativeVersion>
   </PropertyGroup>
 </Project>
 

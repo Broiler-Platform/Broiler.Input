@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -14,8 +14,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Broiler.Media.Video.MediaFoundation" Version="0.1.0-preview.10" />
-    <PackageReference Include="Broiler.Media.Video.Windows" Version="0.1.0-preview.10" />
+    <PackageReference Include="Broiler.Media.Video.MediaFoundation" />
+    <PackageReference Include="Broiler.Media.Video.Windows" />
   </ItemGroup>
 
   <ItemGroup>
