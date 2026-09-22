@@ -47,7 +47,7 @@ internal static class WindowsMicrophoneEndpointEnumerator
                 }
                 finally
                 {
-                    ReleaseComObject(device);
+                    WindowsComInterop.Release(device);
                 }
             }
 
@@ -55,8 +55,8 @@ internal static class WindowsMicrophoneEndpointEnumerator
         }
         finally
         {
-            ReleaseComObject(collection);
-            ReleaseComObject(enumeratorObject);
+            WindowsComInterop.Release(collection);
+            WindowsComInterop.Release(enumeratorObject);
         }
     }
 
@@ -78,8 +78,8 @@ internal static class WindowsMicrophoneEndpointEnumerator
         }
         finally
         {
-            ReleaseComObject(device);
-            ReleaseComObject(enumeratorObject);
+            WindowsComInterop.Release(device);
+            WindowsComInterop.Release(enumeratorObject);
         }
     }
 
@@ -113,14 +113,17 @@ internal static class WindowsMicrophoneEndpointEnumerator
         Guid classId = WindowsWasapiNative.MMDeviceEnumeratorClassId;
         Guid interfaceId = WindowsWasapiNative.IMMDeviceEnumeratorId;
 
-        int result = ComNative.CoCreateInstance(ref classId, IntPtr.Zero, ComNative.CLSCTX_INPROC_SERVER,
-                ref interfaceId, out enumeratorObject);
+        // The raw-pointer overload: an object from the built-in COM marshaller cannot be
+        // cast to the source-generated IMMDeviceEnumerator.
+        int result = ComNative.CoCreateInstance(in classId, IntPtr.Zero, ComNative.CLSCTX_INPROC_SERVER,
+                in interfaceId, out IntPtr enumeratorPointer);
 
         WindowsMicrophoneFaults.ThrowIfFailed(result, "MMDeviceEnumerator activation failed.");
 
-        if (enumeratorObject is not IMMDeviceEnumerator enumerator)
-            throw WindowsMicrophoneFaults.CreateException(unchecked((int)0x80004002), "MMDeviceEnumerator interface activation failed.");
+        IMMDeviceEnumerator enumerator = WindowsComInterop.Wrap<IMMDeviceEnumerator>(enumeratorPointer)
+            ?? throw WindowsMicrophoneFaults.CreateException(unchecked((int)0x80004002), "MMDeviceEnumerator interface activation failed.");
 
+        enumeratorObject = enumerator;
         return enumerator;
     }
 
@@ -138,7 +141,7 @@ internal static class WindowsMicrophoneEndpointEnumerator
             }
             finally
             {
-                ReleaseComObject(endpoint);
+                WindowsComInterop.Release(endpoint);
             }
         }
 
@@ -168,8 +171,17 @@ internal static class WindowsMicrophoneEndpointEnumerator
 
     private static string GetDeviceId(IMMDevice device)
     {
-        WindowsMicrophoneFaults.ThrowIfFailed(device.GetId(out string id), "Microphone endpoint id lookup failed.");
-        return id;
+        WindowsMicrophoneFaults.ThrowIfFailed(device.GetId(out IntPtr id), "Microphone endpoint id lookup failed.");
+
+        try
+        {
+            return Marshal.PtrToStringUni(id)
+                ?? throw WindowsMicrophoneFaults.CreateException(unchecked((int)0x80004003), "Microphone endpoint id lookup returned no id.");
+        }
+        finally
+        {
+            ComNative.CoTaskMemFree(id);
+        }
     }
 
     private static string? GetFriendlyName(IMMDevice device)
@@ -195,7 +207,7 @@ internal static class WindowsMicrophoneEndpointEnumerator
             if (value.ValueType != 0)
                 _ = WindowsWasapiNative.PropVariantClear(ref value);
 
-            ReleaseComObject(propertyStore);
+            WindowsComInterop.Release(propertyStore);
         }
     }
 
@@ -223,10 +235,4 @@ internal static class WindowsMicrophoneEndpointEnumerator
         MicrophoneEndpointRole.Communications => ERole.Communications,
         _ => throw new ArgumentOutOfRangeException(nameof(role)),
     };
-
-    private static void ReleaseComObject(object? value)
-    {
-        if (value is not null && Marshal.IsComObject(value))
-            Marshal.ReleaseComObject(value);
-    }
 }

@@ -103,12 +103,13 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
             WindowsMicrophoneFaults.ThrowIfFailed(audioClient.SetEventHandle(_eventHandle), "WASAPI event binding failed.");
 
             Guid captureClientId = WindowsWasapiNative.IAudioCaptureClientId;
-            result = audioClient.GetService(ref captureClientId, out captureClientObject);
+            result = audioClient.GetService(ref captureClientId, out IntPtr captureClientPointer);
 
             WindowsMicrophoneFaults.ThrowIfFailed(result, "WASAPI capture client activation failed.");
 
-            captureClient = captureClientObject as IAudioCaptureClient
+            captureClient = WindowsComInterop.Wrap<IAudioCaptureClient>(captureClientPointer)
                 ?? throw WindowsMicrophoneFaults.CreateException(unchecked((int)0x80004002), "WASAPI capture client interface activation failed.");
+            captureClientObject = captureClient;
 
             WindowsMicrophoneFaults.ThrowIfFailed(audioClient.Start(), "WASAPI microphone capture start failed.");
             audioStarted = true;
@@ -144,10 +145,10 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
             if (mixFormatPointer != IntPtr.Zero)
                 ComNative.CoTaskMemFree(mixFormatPointer);
 
-            ReleaseComObject(captureClientObject);
-            ReleaseComObject(audioClientObject);
-            ReleaseComObject(endpoint);
-            ReleaseComObject(enumeratorObject);
+            WindowsComInterop.Release(captureClientObject);
+            WindowsComInterop.Release(audioClientObject);
+            WindowsComInterop.Release(endpoint);
+            WindowsComInterop.Release(enumeratorObject);
         }
     }
 
@@ -155,12 +156,15 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
     {
         Guid audioClientId = WindowsWasapiNative.IAudioClientId;
         int result = endpoint.Activate(ref audioClientId, ComNative.CLSCTX_INPROC_SERVER,
-                IntPtr.Zero, out audioClientObject);
+                IntPtr.Zero, out IntPtr audioClientPointer);
 
         WindowsMicrophoneFaults.ThrowIfFailed(result, "WASAPI audio client activation failed.");
 
-        return audioClientObject as IAudioClient
+        IAudioClient audioClient = WindowsComInterop.Wrap<IAudioClient>(audioClientPointer)
             ?? throw WindowsMicrophoneFaults.CreateException(unchecked((int)0x80004002), "WASAPI audio client interface activation failed.");
+
+        audioClientObject = audioClient;
+        return audioClient;
     }
 
     private static MicrophoneFormat GetMixFormat(IAudioClient audioClient, out IntPtr formatPointer)
@@ -325,10 +329,4 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
                 ["exception"] = exception.GetType().FullName ?? exception.GetType().Name,
                 ["message"] = exception.Message,
             }));
-
-    private static void ReleaseComObject(object? value)
-    {
-        if (value is not null && Marshal.IsComObject(value))
-            Marshal.ReleaseComObject(value);
-    }
 }

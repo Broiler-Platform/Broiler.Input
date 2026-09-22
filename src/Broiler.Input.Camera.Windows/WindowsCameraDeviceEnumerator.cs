@@ -74,7 +74,7 @@ internal static class WindowsCameraDeviceEnumerator
                 SetFrameServerShareMode(entry.Activate);
 
                 Guid mediaSourceId = WindowsMediaFoundationNative.IMFMediaSourceId;
-                int activationResult = entry.Activate.ActivateObject(ref mediaSourceId, out mediaSourceObject);
+                int activationResult = entry.Activate.ActivateObject(ref mediaSourceId, out IntPtr mediaSourcePointer);
 
                 if (activationResult < 0)
                 {
@@ -82,8 +82,10 @@ internal static class WindowsCameraDeviceEnumerator
                     break;
                 }
 
-                if (mediaSourceObject is not IMFMediaSource mediaSource)
-                    throw WindowsCameraFaults.CreateException(unchecked((int)0x80004002), "Media Foundation camera source interface activation failed.");
+                IMFMediaSource mediaSource = WindowsComInterop.Wrap<IMFMediaSource>(mediaSourcePointer)
+                    ?? throw WindowsCameraFaults.CreateException(unchecked((int)0x80004002), "Media Foundation camera source interface activation failed.");
+
+                mediaSourceObject = mediaSource;
 
                 activateObject = entry.ActivateObject;
                 entry.Detach();
@@ -134,14 +136,9 @@ internal static class WindowsCameraDeviceEnumerator
             for (uint index = 0; index < count; index++)
             {
                 IntPtr activatePointer = Marshal.ReadIntPtr(activateArray, checked((int)index * IntPtr.Size));
-                object activateObject = Marshal.GetObjectForIUnknown(activatePointer);
 
-                Marshal.Release(activatePointer);
-
-                if (activateObject is IMFActivate activate)
-                    entries.Add(new ActivateEntry(activateObject, activate));
-                else
-                    ReleaseComObject(activateObject);
+                if (WindowsComInterop.Wrap<IMFActivate>(activatePointer) is { } activate)
+                    entries.Add(new ActivateEntry(activate));
             }
 
             return entries;
@@ -151,7 +148,7 @@ internal static class WindowsCameraDeviceEnumerator
             if (activateArray != IntPtr.Zero)
                 ComNative.CoTaskMemFree(activateArray);
 
-            ReleaseComObject(attributesObject);
+            WindowsComInterop.Release(attributesObject);
         }
     }
 
@@ -202,7 +199,7 @@ internal static class WindowsCameraDeviceEnumerator
         }
         finally
         {
-            ReleaseComObject(attributesObject);
+            WindowsComInterop.Release(attributesObject);
         }
     }
 
@@ -256,17 +253,11 @@ internal static class WindowsCameraDeviceEnumerator
         return $"windows:mediafoundation:camera:{suffix}";
     }
 
-    private static void ReleaseComObject(object? value)
-    {
-        if (value is not null && Marshal.IsComObject(value))
-            Marshal.ReleaseComObject(value);
-    }
-
-    private sealed class ActivateEntry(object activateObject, IMFActivate activate) : IDisposable
+    private sealed class ActivateEntry(IMFActivate activate) : IDisposable
     {
         private bool _detached;
 
-        public object ActivateObject { get; } = activateObject;
+        public object ActivateObject => Activate;
 
         public IMFActivate Activate { get; } = activate;
 
@@ -277,7 +268,7 @@ internal static class WindowsCameraDeviceEnumerator
             if (!_detached)
             {
                 Activate.ShutdownObject();
-                ReleaseComObject(ActivateObject);
+                WindowsComInterop.Release(ActivateObject);
             }
         }
     }
