@@ -136,14 +136,14 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
                 _sourceReader = null;
 
             mediaSource?.Shutdown();
-            ReleaseComObject(sourceReaderObject);
-            ReleaseComObject(sourceReaderAttributesObject);
-            ReleaseComObject(mediaSourceObject);
+            WindowsComInterop.Release(sourceReaderObject);
+            WindowsComInterop.Release(sourceReaderAttributesObject);
+            WindowsComInterop.Release(mediaSourceObject);
 
             if (activateObject is IMFActivate activate)
                 activate.ShutdownObject();
 
-            ReleaseComObject(activateObject);
+            WindowsComInterop.Release(activateObject);
             platform?.Dispose();
         }
     }
@@ -170,7 +170,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
         }
         catch
         {
-            ReleaseComObject(attributes);
+            WindowsComInterop.Release(attributes);
             throw;
         }
     }
@@ -203,7 +203,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
             }
             finally
             {
-                ReleaseComObject(nativeType);
+                WindowsComInterop.Release(nativeType);
             }
         }
 
@@ -240,7 +240,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
             }
             finally
             {
-                ReleaseComObject(nativeType);
+                WindowsComInterop.Release(nativeType);
             }
         }
 
@@ -257,7 +257,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
             }
             finally
             {
-                ReleaseComObject(currentType);
+                WindowsComInterop.Release(currentType);
             }
         }
 
@@ -279,7 +279,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
         }
         finally
         {
-            ReleaseComObject(nativeType);
+            WindowsComInterop.Release(nativeType);
         }
     }
 
@@ -329,7 +329,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
                 }
                 finally
                 {
-                    ReleaseComObject(changedType);
+                    WindowsComInterop.Release(changedType);
                 }
             }
         }
@@ -349,7 +349,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
         }
         finally
         {
-            ReleaseComObject(sample);
+            WindowsComInterop.Release(sample);
         }
     }
 
@@ -401,7 +401,7 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
         }
         finally
         {
-            ReleaseComObject(buffer);
+            WindowsComInterop.Release(buffer);
         }
     }
 
@@ -435,10 +435,4 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
         expected.FrameRateNumerator == actual.FrameRateNumerator &&
         expected.FrameRateDenominator == actual.FrameRateDenominator &&
         expected.PixelFormat == actual.PixelFormat;
-
-    private static void ReleaseComObject(object? value)
-    {
-        if (value is not null && Marshal.IsComObject(value))
-            Marshal.ReleaseComObject(value);
-    }
 }
