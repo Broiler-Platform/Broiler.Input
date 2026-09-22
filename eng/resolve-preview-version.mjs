@@ -59,6 +59,25 @@ export async function readVersions(source, packageIds, headers = {}, fetchImpl =
   return results.flat();
 }
 
+// Both feeds share one preview sequence, whichever feed is the destination.
+// GitHub Packages usually runs ahead of NuGet.org, so a NuGet.org publish
+// after github preview.3 must become preview.4, never a second preview.3.
+export async function readPublishedVersions(packageIds, env = process.env, fetchImpl = fetch) {
+  const published = await readVersions('https://api.nuget.org/v3/index.json', packageIds, {}, fetchImpl);
+  const { GITHUB_REPOSITORY_OWNER: owner, GITHUB_ACTOR: actor, GITHUB_TOKEN: token } = env;
+  if (!owner || !actor || !token) {
+    if (env.GITHUB_ACTIONS === 'true') {
+      throw new Error('GitHub feed lookup requires GITHUB_REPOSITORY_OWNER, GITHUB_ACTOR, and GITHUB_TOKEN.');
+    }
+    console.warn('Warning: GitHub Packages not checked (set GITHUB_REPOSITORY_OWNER, GITHUB_ACTOR, and GITHUB_TOKEN).');
+    return published;
+  }
+  const authorization = `Basic ${Buffer.from(`${actor}:${token}`).toString('base64')}`;
+  published.push(...await readVersions(
+    `https://nuget.pkg.github.com/${owner}/index.json`, packageIds, { authorization }, fetchImpl));
+  return published;
+}
+
 function readPackages() {
   const solutions = readdirSync(root).filter(name => name.endsWith('.slnx'));
   if (solutions.length !== 1) throw new Error('Expected exactly one solution.');
@@ -86,15 +105,7 @@ async function main() {
   const packageIds = packages.map(p => p.PackageId);
   const target = process.env.TARGET || 'nuget';
   if (!['nuget', 'github'].includes(target)) throw new Error(`Unknown target '${target}'.`);
-  // NuGet.org is the baseline even when publishing to GitHub Packages.
-  const published = await readVersions('https://api.nuget.org/v3/index.json', packageIds);
-  if (target === 'github') {
-    const { GITHUB_REPOSITORY_OWNER: owner, GITHUB_ACTOR: actor, GITHUB_TOKEN: token } = process.env;
-    if (!owner || !actor || !token) throw new Error('GitHub feed lookup requires owner, actor, and token.');
-    const authorization = `Basic ${Buffer.from(`${actor}:${token}`).toString('base64')}`;
-    published.push(...await readVersions(
-      `https://nuget.pkg.github.com/${owner}/index.json`, packageIds, { authorization }));
-  }
+  const published = await readPublishedVersions(packageIds);
   const tag = process.env.GITHUB_EVENT_NAME === 'push'
     ? (process.env.GITHUB_REF || '').replace(/^refs\/tags\//, '') : '';
   if (process.env.GITHUB_EVENT_NAME === 'push' && !tag.startsWith('v')) {
