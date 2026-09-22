@@ -141,7 +141,7 @@ The solution builds the neutral contracts and Android providers. The test script
 also builds and runs the contract suite on Windows or the evdev suite on Linux.
 These are console runners, so `dotnet test` does not discover them. The contract
 suite verifies the public API against `docs/api-baseline.txt`. Optional device
-checks are described in [hardware validation](docs/hardware-validation.md).
+checks are described in [hardware validation](https://github.com/Broiler-Platform/Broiler.Input/blob/main/docs/hardware-validation.md).
 
 ## Packing and publishing
 
@@ -155,7 +155,7 @@ runtime packages include `.snupkg` files. CI tests Linux and Windows; Publish re
 CI, verifies consumer restore, and publishes those artifacts. Manual runs default
 to a dry run with automatic preview selection.
 
-See [CI, packages, and releases](docs/packaging.md) for central dependency versions,
+See [CI, packages, and releases](https://github.com/Broiler-Platform/Broiler.Input/blob/main/docs/packaging.md) for central dependency versions,
 GitHub Packages credentials, NuGet.org setup, and preview tags.
 
 ## Documentation
