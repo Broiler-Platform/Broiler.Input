@@ -36,6 +36,17 @@ This repository maps `Broiler.*` packages to GitHub Packages and other packages 
 `NuGet.config` explicitly clears inherited sources, disabled-source settings, and
 source mappings so machine settings cannot silently change the feed selection.
 
+The MSBuild property `BroilerPackageSource` selects the restore configuration:
+
+| Value | Configuration | `Broiler.*` dependencies from |
+| --- | --- | --- |
+| `github` (default) | `NuGet.config` | GitHub Packages (credentials required) |
+| `nuget` | `eng/NuGet.nuget-org.config` | NuGet.org (no credentials) |
+
+Set it as an environment variable (`BroilerPackageSource=nuget`) or with
+`-p:BroilerPackageSource=nuget`. Publish sets it from the destination feed, so a
+NuGet.org release is built only from packages that are already on NuGet.org.
+
 For GitHub Packages, set the process environment variable (never commit a token):
 
 ```text
@@ -57,7 +68,9 @@ check fails before anything is pushed.
 
 CI builds and tests `Release` on Ubuntu and Windows. Windows packs and attaches the
 complete package set as `nuget-packages`. Publish calls this same CI workflow with
-the resolved version and downloads its validated artifacts; it does not rebuild them.
+the resolved version and the destination feed as `package-source`, and downloads
+its validated artifacts; it does not rebuild them. Pushes and pull requests restore
+from GitHub Packages.
 
 Run **Publish** manually with `target=github` or `target=nuget`. `dry-run=true` is
 the default: it selects a version, runs CI, packs, and verifies a fresh consumer
