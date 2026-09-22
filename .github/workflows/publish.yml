@@ -69,6 +69,8 @@ jobs:
     uses: ./.github/workflows/ci.yml
     with:
       package-version: ${{ needs.version.outputs.version }}
+      # Build from the destination feed, so a NuGet.org release depends only on NuGet.org.
+      package-source: ${{ github.event_name == 'push' && 'nuget' || inputs.target }}
 
   publish:
     name: Publish to ${{ github.event_name == 'push' && 'nuget' || inputs.target }}
