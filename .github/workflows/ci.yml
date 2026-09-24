@@ -11,20 +11,12 @@ on:
         description: Resolved preview version for a publish run
         type: string
         default: ''
-      package-source:
-        description: Restore Broiler.* dependencies from 'github' (GitHub Packages) or 'nuget' (NuGet.org only)
-        type: string
-        default: github
 
 permissions:
   contents: read
-  packages: read
 
 env:
   PACKAGE_VERSION: ${{ inputs.package-version }}
-  # Read by MSBuild as a property; Directory.Build.props selects the NuGet config.
-  BroilerPackageSource: ${{ inputs.package-source || 'github' }}
-  NuGetPackageSourceCredentials_github: Username=${{ github.actor }};Password=${{ secrets.GITHUB_TOKEN }};ValidAuthenticationTypes=Basic
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -53,13 +45,6 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '24'
-
-      - name: Check package source
-        run: |
-          case "$BroilerPackageSource" in
-            github|nuget) echo "Restoring Broiler.* packages from $BroilerPackageSource." ;;
-            *) echo "::error::Unknown package source '$BroilerPackageSource'; use github or nuget."; exit 1 ;;
-          esac
 
       - name: Test preview version selection
         run: node --test eng/resolve-preview-version.test.mjs

@@ -59,23 +59,9 @@ export async function readVersions(source, packageIds, headers = {}, fetchImpl =
   return results.flat();
 }
 
-// Both feeds share one preview sequence, whichever feed is the destination.
-// GitHub Packages usually runs ahead of NuGet.org, so a NuGet.org publish
-// after github preview.3 must become preview.4, never a second preview.3.
+// Published preview sequence from NuGet.org.
 export async function readPublishedVersions(packageIds, env = process.env, fetchImpl = fetch) {
-  const published = await readVersions('https://api.nuget.org/v3/index.json', packageIds, {}, fetchImpl);
-  const { GITHUB_REPOSITORY_OWNER: owner, GITHUB_ACTOR: actor, GITHUB_TOKEN: token } = env;
-  if (!owner || !actor || !token) {
-    if (env.GITHUB_ACTIONS === 'true') {
-      throw new Error('GitHub feed lookup requires GITHUB_REPOSITORY_OWNER, GITHUB_ACTOR, and GITHUB_TOKEN.');
-    }
-    console.warn('Warning: GitHub Packages not checked (set GITHUB_REPOSITORY_OWNER, GITHUB_ACTOR, and GITHUB_TOKEN).');
-    return published;
-  }
-  const authorization = `Basic ${Buffer.from(`${actor}:${token}`).toString('base64')}`;
-  published.push(...await readVersions(
-    `https://nuget.pkg.github.com/${owner}/index.json`, packageIds, { authorization }, fetchImpl));
-  return published;
+  return readVersions('https://api.nuget.org/v3/index.json', packageIds, {}, fetchImpl);
 }
 
 function readPackages() {
@@ -104,7 +90,7 @@ async function main() {
   parsePreview(configured);
   const packageIds = packages.map(p => p.PackageId);
   const target = process.env.TARGET || 'nuget';
-  if (!['nuget', 'github'].includes(target)) throw new Error(`Unknown target '${target}'.`);
+  if (!['nuget', 'nuget.org'].includes(target)) throw new Error(`Unknown target '${target}'.`);
   const published = await readPublishedVersions(packageIds);
   const tag = process.env.GITHUB_EVENT_NAME === 'push'
     ? (process.env.GITHUB_REF || '').replace(/^refs\/tags\//, '') : '';

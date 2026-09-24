@@ -9,12 +9,6 @@
          advances this further when the feed already contains newer previews. -->
     <VersionSuffix>preview.2</VersionSuffix>
 
-    <!-- Package source for restore: 'github' (default) uses NuGet.config, which
-         maps Broiler.* to GitHub Packages; 'nuget' restores everything from
-         NuGet.org. Publish sets it from the destination feed through the
-         BroilerPackageSource environment variable. -->
-    <BroilerPackageSource Condition="'$(BroilerPackageSource)' == ''">github</BroilerPackageSource>
-    <RestoreConfigFile Condition="'$(BroilerPackageSource)' == 'nuget'">$(MSBuildThisFileDirectory)eng\NuGet.nuget-org.config</RestoreConfigFile>
 
     <BroilerBaseConfiguration Condition="'$(Configuration)' == 'Debug-Linux' Or '$(Configuration)' == 'Debug-Windows'">Debug</BroilerBaseConfiguration>
     <BroilerBaseConfiguration Condition="'$(Configuration)' == 'Release-Linux' Or '$(Configuration)' == 'Release-Windows'">Release</BroilerBaseConfiguration>

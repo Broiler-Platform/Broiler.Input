@@ -78,44 +78,25 @@ function fakeFeeds(feeds) {
   };
 }
 
-const github = { GITHUB_REPOSITORY_OWNER: 'Owner', GITHUB_ACTOR: 'actor', GITHUB_TOKEN: 'token' };
-const feeds = (nuget, gh) => ({
+const feeds = (nuget) => ({
   'https://api.nuget.org/v3/index.json': {
     flat: 'https://api.nuget.org/v3-flatcontainer/', versions: nuget,
   },
-  'https://nuget.pkg.github.com/Owner/index.json': {
-    flat: 'https://nuget.pkg.github.com/Owner/download/', versions: gh,
-    authorization: `Basic ${Buffer.from('actor:token').toString('base64')}`,
-  },
 });
 
-test('the next preview is cumulative across NuGet.org and GitHub Packages', async () => {
-  // GitHub ahead of NuGet.org: a NuGet.org publish must not reuse preview.3.
-  let versions = await readPublishedVersions(['Core'], github, fakeFeeds(feeds(
-    { core: ['0.1.0-preview.1', '0.1.0-preview.2'] },
+test('the next preview is determined by published packages on NuGet.org', async () => {
+  let versions = await readPublishedVersions(['Core'], {}, fakeFeeds(feeds(
     { core: ['0.1.0-preview.1', '0.1.0-preview.2', '0.1.0-preview.3'] })));
   assert.equal(chooseVersion('0.1.0-preview.2', versions), '0.1.0-preview.4');
   assert.throws(() => chooseVersion('0.1.0-preview.2', versions, { tag: 'v0.1.0-preview.3' }));
   assert.throws(() => chooseVersion('0.1.0-preview.2', versions, { suffix: 'preview.3' }));
 
-  // NuGet.org ahead of GitHub, and a package only present on one feed.
-  versions = await readPublishedVersions(['Core', 'Provider'], github, fakeFeeds(feeds(
-    { provider: ['0.1.0-preview.6'] },
-    { core: ['0.1.0-preview.4'] })));
+  // Multiple packages with different preview levels
+  versions = await readPublishedVersions(['Core', 'Provider'], {}, fakeFeeds(feeds(
+    { core: ['0.1.0-preview.4'], provider: ['0.1.0-preview.6'] })));
   assert.equal(chooseVersion('0.1.0-preview.2', versions), '0.1.0-preview.7');
 });
 
-test('GitHub Packages lookup is mandatory in Actions and optional locally', async () => {
-  const fetchImpl = fakeFeeds(feeds({ core: ['0.1.0-preview.2'] }, {}));
-  await assert.rejects(readPublishedVersions(['Core'], { GITHUB_ACTIONS: 'true' }, fetchImpl));
-  const warn = console.warn;
-  console.warn = () => {};
-  try {
-    assert.deepEqual(await readPublishedVersions(['Core'], {}, fetchImpl), ['0.1.0-preview.2']);
-  } finally {
-    console.warn = warn;
-  }
-  // An unreadable GitHub feed stops the run instead of silently narrowing the baseline.
-  await assert.rejects(readPublishedVersions(['Core'], github, async (url, options) =>
-    url.startsWith('https://nuget.pkg.github.com/') ? new Response(null, { status: 401 }) : fetchImpl(url, options)));
+test('NuGet.org feed errors stop publication', async () => {
+  await assert.rejects(readPublishedVersions(['Core'], {}, async () => new Response(null, { status: 500 })));
 });

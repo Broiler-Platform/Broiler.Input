@@ -6,8 +6,8 @@ the checks below are opt-in and must be recorded before a stable support claim.
 ## Normal contract checks
 
 ```powershell
-dotnet build Broiler.Input\Broiler.Input.slnx
-dotnet run --project Broiler.Input\Broiler.Input.Contract.Tests\Broiler.Input.Contract.Tests.csproj --no-build
+dotnet build Broiler.Input.slnx
+dotnet run --project src/tests/Broiler.Input.Contract.Tests/Broiler.Input.Contract.Tests.csproj --no-build
 ```
 
 These checks use deterministic fake providers and must not require input
