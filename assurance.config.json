@@ -1,0 +1,45 @@
+{
+  "$comment": "Per-declaration assurance for Broiler.Input. Product projects only: every packable project under src/, including the Windows and Linux providers that Broiler.Input.slnx does not build (they compile through the Contract and Linux test hosts and ship through eng/pack.ps1). Broiler.Input.All is a dependencies-only meta-package with no sources. The src/tests suites and src/Broiler.Input.Linux.Diagnostic (IsPackable=false, never shipped) are not listed, so they are not covered. No source here is third-party-derived, so there are no spdxOverrides.",
+  "schema": 1,
+  "component": "Broiler.Input",
+  "projects": [
+    "src/Broiler.Input/Broiler.Input.csproj",
+    "src/Broiler.Input.All/Broiler.Input.All.csproj",
+    "src/Broiler.Input.Android/Broiler.Input.Android.csproj",
+    "src/Broiler.Input.Camera/Broiler.Input.Camera.csproj",
+    "src/Broiler.Input.Camera.Windows/Broiler.Input.Camera.Windows.csproj",
+    "src/Broiler.Input.Keyboard/Broiler.Input.Keyboard.csproj",
+    "src/Broiler.Input.Keyboard.Android/Broiler.Input.Keyboard.Android.csproj",
+    "src/Broiler.Input.Keyboard.Linux/Broiler.Input.Keyboard.Linux.csproj",
+    "src/Broiler.Input.Keyboard.Windows/Broiler.Input.Keyboard.Windows.csproj",
+    "src/Broiler.Input.Legacy/Broiler.Input.Legacy.csproj",
+    "src/Broiler.Input.Linux/Broiler.Input.Linux.csproj",
+    "src/Broiler.Input.Microphone/Broiler.Input.Microphone.csproj",
+    "src/Broiler.Input.Microphone.Windows/Broiler.Input.Microphone.Windows.csproj",
+    "src/Broiler.Input.Mouse/Broiler.Input.Mouse.csproj",
+    "src/Broiler.Input.Mouse.Linux/Broiler.Input.Mouse.Linux.csproj",
+    "src/Broiler.Input.Mouse.Windows/Broiler.Input.Mouse.Windows.csproj",
+    "src/Broiler.Input.Pen/Broiler.Input.Pen.csproj",
+    "src/Broiler.Input.Pen.Android/Broiler.Input.Pen.Android.csproj",
+    "src/Broiler.Input.Text/Broiler.Input.Text.csproj",
+    "src/Broiler.Input.Text.Android/Broiler.Input.Text.Android.csproj",
+    "src/Broiler.Input.Touch/Broiler.Input.Touch.csproj",
+    "src/Broiler.Input.Touch.Android/Broiler.Input.Touch.Android.csproj",
+    "src/Broiler.Input.Windows/Broiler.Input.Windows.csproj"
+  ],
+  "exclude": [],
+  "exemptionPredicate": "owning-component",
+  "spdx": {
+    "copyright": [ "2026 Broiler Platform contributors" ],
+    "license": "Apache-2.0"
+  },
+  "spdxOverrides": [],
+  "artefacts": {
+    "report": "CODE-ASSURANCE.md",
+    "humanReview": "HUMAN_REVIEW.md",
+    "manifest": "assurance.manifest.json"
+  },
+  "forbidDirectives": false,
+  "forgeryVocabulary": "narrow",
+  "regenerateCommand": "dotnet run --project Broiler.Code/src/Broiler.Code.Review.Cli -c Release -- assurance generate --root Broiler.Input"
+}
