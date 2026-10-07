@@ -76,7 +76,7 @@ The restore uses an isolated package cache, the local release artifacts, and NuG
 
 Run the **Publish** workflow manually via GitHub Actions (`workflow_dispatch`) or by pushing a release tag (`v0.1.0-preview.N`).
 
-- **Dry Run (`dry-run=true`, default):** Selects the preview version, runs CI, packs, and verifies a fresh consumer restore without pushing to NuGet.org.
+- **No dry-run mode:** Every Publish run pushes. The no-push pack and fresh consumer-restore check runs in CI on every push and pull request.
 - **Automatic Preview Selection:** Leave `version-suffix` empty to automatically compute the next unused `preview.N` on the release line by checking all shipping package IDs against NuGet.org.
 - **Explicit Version Suffix:** Provide `preview.N` to target a specific preview number. It must be unused on NuGet.org and at least the computed next preview floor.
 - **Pushing via Tag:** A tag such as `v0.1.0-preview.2` publishes that exact version to NuGet.org after passing validation and consumer restore checks. Only `X.Y.Z-preview.N` versions matching the configured release line are accepted.

@@ -249,7 +249,8 @@ powershell -File eng/verify-feed.ps1 -Packages artifacts
 All builds and packages restore exclusively from **NuGet.org**.
 
 Publishing is driven by `.github/workflows/publish.yml`:
-- Trigger manually via `workflow_dispatch` (defaults to `dry-run: true` to validate version resolution, packing, and consumer restore without pushing).
+- Trigger manually via `workflow_dispatch`; every run pushes (there is no dry-run mode).
+- CI packs every package and verifies consumer restore on every push and pull request without pushing.
 - Trigger automatically by pushing a git release tag (`v0.1.0-preview.N`).
 - Publishes exclusively to **NuGet.org** using the `NUGET_TOKEN` (or `NUGET_API_KEY`) repository secret.
 
