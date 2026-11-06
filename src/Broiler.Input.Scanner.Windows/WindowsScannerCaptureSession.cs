@@ -145,7 +145,14 @@ internal sealed partial class WindowsScannerCaptureSession : IDisposable, IAsync
                     WindowsScannerFaults.ThrowIfFailed(downloadResult, "WIA scanner page transfer failed.");
 
                 if (!_worker.IsStopRequested)
-                    _completed();
+                {
+                    SpinWait spinner = default;
+                    while (!_worker.IsStopRequested && _worker.Metrics.QueueDepth > 0)
+                        spinner.SpinOnce();
+
+                    if (!_worker.IsStopRequested)
+                        _completed();
+                }
             }
         }
         finally

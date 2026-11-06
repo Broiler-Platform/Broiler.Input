@@ -137,8 +137,12 @@ internal static class WindowsScannerDeviceEnumerator
     {
         if (WindowsWiaPropertyHelper.TryReadInt32(storage, WindowsWiaConstants.WIA_DIP_DEV_TYPE, out int devType))
         {
+            int highWord = (devType >> 16) & 0xFFFF;
             int lowWord = devType & 0xFFFF;
-            if (lowWord != WindowsWiaConstants.StiDeviceTypeScanner && lowWord != WindowsWiaConstants.StiDeviceTypeDefault)
+            bool isScanner = highWord == WindowsWiaConstants.StiDeviceTypeScanner ||
+                             lowWord == WindowsWiaConstants.StiDeviceTypeScanner ||
+                             devType == WindowsWiaConstants.StiDeviceTypeDefault;
+            if (!isScanner)
                 return null;
         }
 
