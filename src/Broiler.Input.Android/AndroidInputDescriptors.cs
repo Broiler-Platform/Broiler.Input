@@ -57,6 +57,16 @@ public static class AndroidInputDescriptors
                 ("text.composition", "true"),
                 ("text.source", "android.view.inputmethod.InputConnection")));
 
+    public static InputDeviceDescriptor Scanner(int androidDeviceId = VirtualDeviceId,
+        string? displayName = null, bool supportsFeeder = false, bool supportsDuplex = false) =>
+        new(InputDeviceId.FromOpaqueValue("android:scanner:" + androidDeviceId.ToString(CultureInfo.InvariantCulture)),
+            InputKind.Scanner, displayName ?? "Android document scanner", InputDeviceAvailability.Available,
+            BuildCapabilities(
+                ("android.device-id", androidDeviceId.ToString(CultureInfo.InvariantCulture)),
+                ("scanner.capture.source", "android-host"),
+                ("scanner.feeder", supportsFeeder ? "true" : "false"),
+                ("scanner.duplex", supportsDuplex ? "true" : "false")));
+
     private static IEnumerable<InputCapability> BuildCapabilities(params (string Name, string Value)[] capabilities)
     {
         foreach ((string name, string value) in capabilities)

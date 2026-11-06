@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Broiler.Input.Camera;
 using Broiler.Input.Microphone;
+using Broiler.Input.Scanner;
 using Broiler.Input.Windows;
 
 namespace Broiler.Input.Contract.Tests;
@@ -230,6 +231,22 @@ internal static class CaptureRegressionTests
         await delivery.WaitAsync(Timeout);
         Require(frame.IsDisposed, "The late frame was retained after disposal.");
         Require(!adapter.TryAcquireLatest(out _), "Disposed adapter accepted a frame.");
+
+        using TestScanner scanner = new();
+        using ManualResetEventSlim scannerEntered = new(), scannerRelease = new();
+        scanner.PageReady += _ => { scannerEntered.Set(); scannerRelease.Wait(); };
+        using ScannerPreviewAdapter scannerAdapter = new(scanner);
+        ScannerPageLease page = new([0], 1, 1, new ScannerFormat(ScannerSourceKind.Flatbed, 150, 150, ScannerPixelFormat.Grayscale8), [], default, 0);
+        Task scannerDelivery = Task.Run(() => scanner.Emit(page));
+        try
+        {
+            Require(scannerEntered.Wait(Timeout), "Scanner page delivery did not start.");
+            scannerAdapter.Dispose();
+        }
+        finally { scannerRelease.Set(); }
+        await scannerDelivery.WaitAsync(Timeout);
+        Require(page.IsDisposed, "The late scanner page was retained after disposal.");
+        Require(!scannerAdapter.TryAcquireLatest(out _), "Disposed scanner adapter accepted a page.");
     }
 
     public static Task DisposeFromFaultNotification()
@@ -245,6 +262,11 @@ internal static class CaptureRegressionTests
             microphone.CaptureStateChanged += _ => microphone.Dispose();
             microphone.Fail(new InputFault(category, "capture failed"));
             Require(microphone.State == InputDeviceState.Disposed, "Microphone fault overwrote callback disposal.");
+
+            using TestScanner scanner = new();
+            scanner.CaptureStateChanged += _ => scanner.Dispose();
+            scanner.Fail(new InputFault(category, "capture failed"));
+            Require(scanner.State == InputDeviceState.Disposed, "Scanner fault overwrote callback disposal.");
         }
         return Task.CompletedTask;
     }
@@ -288,6 +310,17 @@ internal static class CaptureRegressionTests
     private sealed class TestMicrophone() : MicrophoneInputDevice(new InputDeviceDescriptor(
         InputDeviceId.FromOpaqueValue("regression:microphone"), InputKind.Microphone, "Regression microphone"))
     {
+        public void Fail(InputFault fault)
+        {
+            if (fault.Category == InputErrorCategory.DeviceRemoved) MarkCaptureInvalidated(fault);
+            else MarkCaptureFaulted(fault);
+        }
+    }
+
+    private sealed class TestScanner() : ScannerInputDevice(new InputDeviceDescriptor(
+        InputDeviceId.FromOpaqueValue("regression:scanner"), InputKind.Scanner, "Regression scanner"))
+    {
+        public void Emit(ScannerPageLease page) => RaisePageReady(page);
         public void Fail(InputFault fault)
         {
             if (fault.Category == InputErrorCategory.DeviceRemoved) MarkCaptureInvalidated(fault);

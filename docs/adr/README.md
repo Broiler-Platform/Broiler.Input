@@ -16,3 +16,4 @@ traceability; current follow-up work is in
 | [0006](0006-monotonic-clock-domain.md) | Monotonic clock domain |
 | [0007](0007-raw-input-registration-ownership.md) | Raw Input registration ownership |
 | [0008](0008-media-interop-boundary.md) | Media interop boundary |
+| [0009](0009-scanner-acquisition-boundary.md) | Scanner acquisition boundary and camera reuse |

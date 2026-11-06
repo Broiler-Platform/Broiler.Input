@@ -1,3 +1,4 @@
+using Broiler.Input.Windows;
 using Broiler.Native.Windows;
 using Broiler.Native.Windows.MediaFoundation;
 using Broiler.Native.Windows.MediaFoundation.Capture;

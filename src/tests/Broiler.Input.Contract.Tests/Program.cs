@@ -47,6 +47,13 @@ internal static partial class Program
             ("camera loss-sensitive bounded delivery", CameraLossSensitiveModeDropsNewest),
             ("camera frame lease ownership", () => RunSync(CameraFrameLeaseDisposalInvalidatesMemory)),
             ("camera preview adapter", CameraLatestFramePreviewAdapterKeepsOnlyLatest),
+            ("scanner synthetic batch and duplex capture", ScannerSyntheticBatchCaptureAndDuplexFlags),
+            ("scanner preview mode and adapter", ScannerPreviewModeAndAdapterKeepsLatestPage),
+            ("scanner page lease ownership", () => RunSync(ScannerPageLeaseDisposalInvalidatesMemory)),
+            ("scanner paper jam fault transition", ScannerPaperJamFaultTransition),
+            ("windows scanner isolation", () => RunSync(WindowsScannerContractsAreIsolated)),
+            ("windows scanner fault mapping", () => RunSync(WindowsScannerFaultMappingMatchesWiaCodes)),
+            ("windows scanner dib parser", () => RunSync(WindowsScannerDibParserNormalizesTopDownPlanes)),
             ("production capture bounded delivery", CaptureRegressionTests.BoundedDelivery),
             ("production capture callback shutdown", CaptureRegressionTests.StopFromCallback),
             ("production capture runtime faults", CaptureRegressionTests.RuntimeFaults),
@@ -61,6 +68,7 @@ internal static partial class Program
             ("pointer modifiers mirror keyboard modifiers", () => RunSync(PointerModifiersMirrorKeyboardModifiers)),
             ("mouse does not reference keyboard", () => RunSync(MouseDoesNotReferenceKeyboard)),
             ("pointer events carry modifiers", () => RunSync(PointerEventsCarryModifiers)),
+            ("scanner kind and shared windows com helpers", () => RunSync(ScannerKindAndSharedWindowsComHelpers)),
             ("public api baseline", () => RunSync(PublicApiBaselineMatches)),
         };
 

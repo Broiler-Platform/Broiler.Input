@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Broiler.Input.Scanner.Windows</RootNamespace>
+    <AssemblyName>Broiler.Input.Scanner.Windows</AssemblyName>
+    <PackageId>Broiler.Input.Scanner.Windows</PackageId>
+    <Description>Windows Image Acquisition (WIA 2.0) scanner input provider for Broiler.</Description>
+    <Configurations>Debug;Release</Configurations>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Broiler.Native.Windows" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Broiler.Input.Scanner\Broiler.Input.Scanner.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Windows\Broiler.Input.Windows.csproj" />
+  </ItemGroup>
+
+</Project>

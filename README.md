@@ -24,11 +24,12 @@ dotnet add package Broiler.Input.All --prerelease
 | `Broiler.Input.Microphone` | Neutral audio capture contract, formats, and buffer leases | Neutral (`net10.0`) |
 | `Broiler.Input.Mouse` | Neutral mouse and pointer contracts, position, and buttons | Neutral (`net10.0`) |
 | `Broiler.Input.Pen` | Neutral stylus and pen contracts, pressure, tilt, and eraser | Neutral (`net10.0`) |
+| `Broiler.Input.Scanner` | Neutral scanner contracts, paper sources, formats, and page leases | Neutral (`net10.0`) |
 | `Broiler.Input.Text` | Neutral IME and text input contracts | Neutral (`net10.0`) |
 | `Broiler.Input.Touch` | Neutral multi-touch contracts and pointer tracking | Neutral (`net10.0`) |
 | `Broiler.Input.Legacy` | Window-callback compatibility adapter for migration | Neutral (`net10.0`) |
-| `Broiler.Input.Windows` + `Broiler.Input.<Kind>.Windows` | Windows providers (Raw Input, WASAPI, Media Foundation) | Windows (`net10.0-windows`) |
-| `Broiler.Input.Linux` + `Broiler.Input.<Kind>.Linux` | Linux evdev event-device providers | Linux (`net10.0`) |
+| `Broiler.Input.Windows` + `Broiler.Input.<Kind>.Windows` | Windows providers (Raw Input, WASAPI, Media Foundation, WIA 2.0) | Windows (`net10.0-windows`) |
+| `Broiler.Input.Linux` + `Broiler.Input.<Kind>.Linux` | Linux evdev event-device and SANE scanner providers | Linux (`net10.0`) |
 | `Broiler.Input.Android` + `Broiler.Input.<Kind>.Android` | Android translation layer (primitive event data, no SDK dependency) | Neutral / Android (`net10.0`) |
 
 `Broiler.Input.Testing`, `Broiler.Input.Linux.Diagnostic`, and the `*.Tests` runners are internal development projects and are not published.
@@ -162,6 +163,10 @@ Broiler.Input.Mouse
 Broiler.Input.Mouse.Windows
 Broiler.Input.Mouse.Linux
 Broiler.Input.Pen
+Broiler.Input.Scanner
+Broiler.Input.Scanner.Windows
+Broiler.Input.Scanner.Linux
+Broiler.Input.Scanner.Android
 Broiler.Input.Text
 Broiler.Input.Touch
 Broiler.Input.Android
@@ -236,7 +241,7 @@ The contract suite verifies the public API against `docs/api-baseline.txt`. Opti
 powershell -File eng/pack.ps1
 ```
 
-This builds and validates all 23 shipping packages into the `artifacts/` folder, verifying their nuspec manifests, versions, internal dependency bounds, documentation XMLs, icon, README, and symbol packages (`.snupkg`).
+This builds and validates all 27 shipping packages into the `artifacts/` folder, verifying their nuspec manifests, versions, internal dependency bounds, documentation XMLs, icon, README, and symbol packages (`.snupkg`).
 
 To verify consumer restore against NuGet.org in an isolated sandbox with a fresh cache:
 
@@ -259,6 +264,7 @@ See [CI, packages, and releases](docs/packaging.md) for complete details on cent
 ## Documentation Index
 
 - [Current Roadmap](docs/roadmap.md)
+- [Scanner Support Roadmap](docs/scanner-roadmap.md)
 - [ADR Index](docs/adr/README.md)
 - [CI, Packages, and Releases](docs/packaging.md)
 - [Camera Contracts and Windows Provider](docs/camera.md)

@@ -18,7 +18,13 @@ public static class LinuxInputNativeLibraryProbe
         ["libudev.so.1", "libudev.so"],
         Required: false);
 
-    public static IReadOnlyList<LinuxInputNativeLibraryStatus> CheckBaseline() => [Check(Udev)];
+    public static LinuxInputNativeLibraryRequirement Sane { get; } = new(
+        "sane",
+        "SANE scanner backend",
+        ["libsane.so.1", "libsane.so"],
+        Required: false);
+
+    public static IReadOnlyList<LinuxInputNativeLibraryStatus> CheckBaseline() => [Check(Udev), Check(Sane)];
 
     public static LinuxInputNativeLibraryStatus Check(LinuxInputNativeLibraryRequirement requirement)
     {

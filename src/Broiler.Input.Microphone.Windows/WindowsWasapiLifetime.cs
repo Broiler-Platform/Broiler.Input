@@ -1,78 +1,7 @@
 using Broiler.Native.Windows;
 using Broiler.Native.Windows.Wasapi;
-using System;
-using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.Marshalling;
-using System.Runtime.Versioning;
 
 namespace Broiler.Input.Microphone.Windows;
-
-internal sealed class WindowsComApartmentScope : IDisposable
-{
-    private readonly bool _shouldUninitialize;
-
-    private WindowsComApartmentScope(bool shouldUninitialize) => _shouldUninitialize = shouldUninitialize;
-
-    public static WindowsComApartmentScope Enter()
-    {
-        int result = ComNative.CoInitializeEx(IntPtr.Zero, ComNative.COINIT_MULTITHREADED);
-
-        if (result == ComNative.S_OK || result == ComNative.S_FALSE)
-            return new WindowsComApartmentScope(shouldUninitialize: true);
-
-        if (result == ComNative.RPC_E_CHANGED_MODE)
-            return new WindowsComApartmentScope(shouldUninitialize: false);
-
-        throw WindowsMicrophoneFaults.CreateException(result, "COM initialization failed.");
-    }
-
-    public void Dispose()
-    {
-        if (_shouldUninitialize)
-            ComNative.CoUninitialize();
-    }
-}
-
-/// <summary>
-/// Bridges raw COM pointers into the source-generated interop of Broiler.Native.Windows.
-/// </summary>
-[SupportedOSPlatform("windows")]
-internal static class WindowsComInterop
-{
-    /// <summary>
-    /// Wraps a raw interface pointer the caller owns and releases that reference: the wrapper
-    /// holds its own. Returns <see langword="null"/> for a null pointer or when the object does
-    /// not implement <typeparamref name="TInterface"/>.
-    /// </summary>
-    public static TInterface? Wrap<TInterface>(IntPtr pointer) where TInterface : class
-    {
-        if (pointer == IntPtr.Zero)
-            return null;
-
-        try
-        {
-            return ComNative.GetOrCreateComObject<TInterface>(pointer);
-        }
-        catch (InvalidCastException)
-        {
-            return null;
-        }
-        finally
-        {
-            ComNative.ReleaseIUnknown(pointer);
-        }
-    }
-
-    /// <summary>
-    /// Releases a COM object early where the interop allows it. Source-generated wrappers are
-    /// cached per COM identity and released by their finalizer, so this is a no-op for them.
-    /// </summary>
-    public static void Release(object? value)
-    {
-        if (value is not null)
-            ComNative.ReleaseComObject(value);
-    }
-}
 
 internal static class WindowsMicrophoneFaults
 {
@@ -124,4 +53,3 @@ internal static class WindowsMicrophoneFaults
         _ => null,
     };
 }
-

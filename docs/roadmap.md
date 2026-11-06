@@ -22,6 +22,7 @@ tracks only work that is still open.
 - Add Windows Touch and Pen providers for the existing neutral contracts,
   including cancellation, capture loss, pressure/tilt capability reporting, DPI
   coordinates, and duplicate compatibility-mouse suppression.
+- Record physical hardware validation evidence for Scanner providers (`Broiler.Input.Scanner.Windows` via WIA 2.0, `Broiler.Input.Scanner.Linux` via SANE, and `Broiler.Input.Scanner.Android`); contracts and providers are landed per the [Scanner Support Roadmap](scanner-roadmap.md) and [Hardware Validation](hardware-validation.md).
 - Decide whether Gamepad enters supported scope. If approved, define a neutral
   state contract and one Windows provider before creating packages.
 - Treat Linux text/IME, touchpad policy, gestures, touch, and pen as separately

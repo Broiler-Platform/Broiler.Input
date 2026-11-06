@@ -1,3 +1,4 @@
+using Broiler.Input.Windows;
 using Broiler.Native.Windows;
 using Broiler.Native.Windows.Wasapi;
 using System;
@@ -22,7 +23,8 @@ internal static class WindowsMicrophoneEndpointEnumerator
 
     public static IReadOnlyList<InputDeviceDescriptor> EnumerateCaptureDevices()
     {
-        using WindowsComApartmentScope apartment = WindowsComApartmentScope.Enter();
+        using WindowsComApartmentScope apartment = WindowsComApartmentScope.Enter(
+            static hresult => WindowsMicrophoneFaults.CreateException(hresult, "COM initialization failed."));
         object? enumeratorObject = null;
         IMMDeviceCollection? collection = null;
 
@@ -62,7 +64,8 @@ internal static class WindowsMicrophoneEndpointEnumerator
 
     public static InputDeviceDescriptor? TryGetDefaultCaptureDevice(MicrophoneEndpointRole role)
     {
-        using WindowsComApartmentScope apartment = WindowsComApartmentScope.Enter();
+        using WindowsComApartmentScope apartment = WindowsComApartmentScope.Enter(
+            static hresult => WindowsMicrophoneFaults.CreateException(hresult, "COM initialization failed."));
         object? enumeratorObject = null;
         IMMDevice? device = null;
 

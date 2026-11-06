@@ -70,21 +70,14 @@ internal sealed class WindowsCameraCaptureSession : IDisposable, IAsyncDisposabl
             if (_sourceReader is not { } reader)
                 return;
 
-            bool uninitialize = false;
+            using WindowsComApartmentScope apartment = WindowsComApartmentScope.EnterBestEffort();
             try
             {
-                int result = ComNative.CoInitializeEx(IntPtr.Zero, ComNative.COINIT_MULTITHREADED);
-                uninitialize = result is ComNative.S_OK or ComNative.S_FALSE;
                 WindowsCameraFaults.ThrowIfFailed(reader.Flush(VideoStreamIndex), "Camera source reader flush failed.");
             }
             catch (Exception exception)
             {
                 ReportCallbackFailure(exception);
-            }
-            finally
-            {
-                if (uninitialize)
-                    ComNative.CoUninitialize();
             }
         }
     }

@@ -50,6 +50,7 @@ internal static partial class Program
             ("provider rejects an unregistered descriptor", ProviderRejectsUnknownDescriptor),
             ("provider open honours cancellation", ProviderHonoursCancellation),
             ("device timestamps use the android uptime clock", TimestampsUseAndroidClock),
+            ("scanner delivers host pages and handles capture loss", ScannerDeliversHostPagesAndHandlesCaptureLoss),
             ("android assemblies avoid android sdk references", () => RunSync(AssembliesAvoidAndroidSdkReferences)),
         };
 

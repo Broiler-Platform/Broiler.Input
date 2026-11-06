@@ -24,7 +24,7 @@ the host's platform suite explicitly because those projects are excluded from th
 normal solution build. DOM uses `dotnet test`; the other components use console runners.
 
 `eng/pack.ps1` enumerates **every packable project**, including excluded providers,
-and verifies all 23 packages, versions, internal dependencies, README, icon,
+and verifies all 27 packages, versions, internal dependencies, README, icon,
 assemblies, API documentation, and symbols. Tests, demos, and diagnostic tools do
 not ship. Use Windows to pack the complete set. The output directory must contain
 no previous packages; choose `-Output <empty-directory>` for another run. Optional
@@ -64,7 +64,7 @@ CI builds and tests `Release` on Ubuntu and Windows. Windows packs and attaches 
 
 ### Consumer Restore Verification
 
-Before packages are published to NuGet.org, `eng/verify-feed.ps1` verifies that a consumer project can successfully restore all 23 packages along with their transitive dependencies in an isolated sandbox with a fresh cache:
+Before packages are published to NuGet.org, `eng/verify-feed.ps1` verifies that a consumer project can successfully restore all 27 packages along with their transitive dependencies in an isolated sandbox with a fresh cache:
 
 ```sh
 powershell -File eng/verify-feed.ps1 -Packages artifacts

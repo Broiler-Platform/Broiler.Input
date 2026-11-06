@@ -34,6 +34,14 @@
     <Project Path="src/Broiler.Input.Mouse/Broiler.Input.Mouse.csproj" />
     <Project Path="src/Broiler.Input.Pen.Android/Broiler.Input.Pen.Android.csproj" />
     <Project Path="src/Broiler.Input.Pen/Broiler.Input.Pen.csproj" />
+    <Project Path="src/Broiler.Input.Scanner.Android/Broiler.Input.Scanner.Android.csproj" />
+    <Project Path="src/Broiler.Input.Scanner.Linux/Broiler.Input.Scanner.Linux.csproj">
+      <Build Project="false" />
+    </Project>
+    <Project Path="src/Broiler.Input.Scanner.Windows/Broiler.Input.Scanner.Windows.csproj">
+      <Build Project="false" />
+    </Project>
+    <Project Path="src/Broiler.Input.Scanner/Broiler.Input.Scanner.csproj" />
     <Project Path="src/Broiler.Input.Text.Android/Broiler.Input.Text.Android.csproj" />
     <Project Path="src/Broiler.Input.Text/Broiler.Input.Text.csproj" />
     <Project Path="src/Broiler.Input.Touch.Android/Broiler.Input.Touch.Android.csproj" />

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -17,6 +17,8 @@
     <ProjectReference Include="..\..\Broiler.Input.Pen.Android\Broiler.Input.Pen.Android.csproj" />
     <ProjectReference Include="..\..\Broiler.Input.Keyboard.Android\Broiler.Input.Keyboard.Android.csproj" />
     <ProjectReference Include="..\..\Broiler.Input.Text.Android\Broiler.Input.Text.Android.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Scanner\Broiler.Input.Scanner.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Scanner.Android\Broiler.Input.Scanner.Android.csproj" />
   </ItemGroup>
 
 </Project>

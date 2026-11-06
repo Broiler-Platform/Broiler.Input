@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Broiler.Input.Scanner.Android</RootNamespace>
+    <AssemblyName>Broiler.Input.Scanner.Android</AssemblyName>
+    <PackageId>Broiler.Input.Scanner.Android</PackageId>
+    <Description>Android host-driven document and image scanner input provider for Broiler.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Broiler.Input.Android.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Broiler.Input.Scanner\Broiler.Input.Scanner.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Android\Broiler.Input.Android.csproj" />
+  </ItemGroup>
+
+</Project>

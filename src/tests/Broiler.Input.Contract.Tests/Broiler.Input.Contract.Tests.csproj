@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -29,6 +29,8 @@
     <ProjectReference Include="..\..\Broiler.Input.Microphone.Windows\Broiler.Input.Microphone.Windows.csproj" />
     <ProjectReference Include="..\..\Broiler.Input.Mouse\Broiler.Input.Mouse.csproj" />
     <ProjectReference Include="..\..\Broiler.Input.Mouse.Windows\Broiler.Input.Mouse.Windows.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Scanner\Broiler.Input.Scanner.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Scanner.Windows\Broiler.Input.Scanner.Windows.csproj" />
     <ProjectReference Include="..\Broiler.Input.Testing\Broiler.Input.Testing.csproj" />
   </ItemGroup>
 

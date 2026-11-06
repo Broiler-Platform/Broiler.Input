@@ -12,6 +12,8 @@ using Broiler.Input.Text;
 using Broiler.Input.Text.Android;
 using Broiler.Input.Touch;
 using Broiler.Input.Touch.Android;
+using Broiler.Input.Scanner;
+using Broiler.Input.Scanner.Android;
 
 namespace Broiler.Input.Android.Tests;
 
@@ -113,6 +115,54 @@ internal static partial class Program
 
     // ---- boundary ------------------------------------------------------------------------------
 
+    private static async Task ScannerDeliversHostPagesAndHandlesCaptureLoss()
+    {
+        AndroidScannerProvider provider = new();
+        InputDeviceDescriptor descriptor = provider.RegisterDefaultScanner("Android MLKit Scanner", supportsFeeder: true, supportsDuplex: true);
+
+        ScannerFormat format = new(ScannerSourceKind.FeederDuplex, 300, 300, ScannerPixelFormat.Rgba32);
+        ScannerOpenOptions options = new(format, new ScannerSessionOptions(maxPages: 2));
+        AndroidScannerInputDevice device = (AndroidScannerInputDevice)await provider.OpenAsync(descriptor, options).ConfigureAwait(false);
+
+        await device.OpenAsync().ConfigureAwait(false);
+        await device.StartAsync().ConfigureAwait(false);
+        AssertEqual(ScannerCaptureState.Scanning, device.CaptureState, "Android scanner enters Scanning state.");
+
+        ScannerProgressEvent? progress = null;
+        device.ProgressChanged += e => progress = e;
+        device.ReportProgress(0, 0.5, 64, eventTimeMilliseconds: 1000);
+        AssertEqual(0.5, progress?.ProgressFraction, "Android scanner reports progress fraction.");
+
+        List<(long PageNumber, ScannerPageFlags Flags, ScannerRotation Rotation, byte FirstByte)> delivered = [];
+        device.PageReady += e =>
+        {
+            using ScannerPageLease page = e.Page;
+            delivered.Add((page.PageNumber, page.Flags, page.Rotation, page.Memory.Span[0]));
+        };
+
+        AssertTrue(device.DeliverScannedPage([11, 22, 33, 44], 1, 1, rotation: ScannerRotation.Rotate90, eventTimeMilliseconds: 1100),
+            "First host-scanned page is delivered.");
+        AssertTrue(device.DeliverScannedPage([55, 66, 77, 88], 1, 1, rotation: ScannerRotation.Rotate270, eventTimeMilliseconds: 1200),
+            "Second host-scanned page is delivered and completes batch.");
+
+        AssertEqual(2, delivered.Count, "Two pages delivered.");
+        AssertEqual(0L, delivered[0].PageNumber, "Page 0 delivered first.");
+        AssertEqual(ScannerRotation.Rotate90, delivered[0].Rotation, "Page 0 preserves rotation.");
+        AssertEqual(1L, delivered[1].PageNumber, "Page 1 delivered second.");
+        AssertEqual(ScannerPageFlags.DuplexBackSide | ScannerPageFlags.EndOfBatch, delivered[1].Flags,
+            "Second duplex page carries DuplexBackSide and EndOfBatch flags.");
+        AssertEqual(ScannerCaptureState.Completed, device.CaptureState, "MaxPages completion transitions state to Completed.");
+
+        // Restart and verify NotifyCaptureLost aborts active scan
+        await device.StopAsync().ConfigureAwait(false);
+        await device.StartAsync().ConfigureAwait(false);
+        AssertEqual(ScannerCaptureState.Scanning, device.CaptureState, "Restarted Android scanner is Scanning.");
+
+        provider.NotifyCaptureLost("activity paused");
+        AssertEqual(ScannerCaptureState.Faulted, device.CaptureState, "Capture loss faults active scan.");
+        AssertEqual(ScannerFaultCode.TransferAborted, device.LastFaultCode, "Capture loss sets TransferAborted fault code.");
+    }
+
     private static void AssembliesAvoidAndroidSdkReferences()
     {
         // The Android backends translate primitives, so they must not drag in Mono.Android. That is
@@ -127,6 +177,7 @@ internal static partial class Program
             typeof(AndroidPenInputDevice).Assembly,
             typeof(AndroidKeyboardInputDevice).Assembly,
             typeof(AndroidTextInputDevice).Assembly,
+            typeof(AndroidScannerInputDevice).Assembly,
         ];
 
         foreach (Assembly assembly in assemblies)

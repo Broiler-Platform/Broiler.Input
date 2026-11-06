@@ -26,6 +26,7 @@
     <ProjectReference Include="..\Broiler.Input.Microphone\Broiler.Input.Microphone.csproj" />
     <ProjectReference Include="..\Broiler.Input.Mouse\Broiler.Input.Mouse.csproj" />
     <ProjectReference Include="..\Broiler.Input.Pen\Broiler.Input.Pen.csproj" />
+    <ProjectReference Include="..\Broiler.Input.Scanner\Broiler.Input.Scanner.csproj" />
     <ProjectReference Include="..\Broiler.Input.Text\Broiler.Input.Text.csproj" />
     <ProjectReference Include="..\Broiler.Input.Touch\Broiler.Input.Touch.csproj" />
     <ProjectReference Include="..\Broiler.Input\Broiler.Input.csproj" />

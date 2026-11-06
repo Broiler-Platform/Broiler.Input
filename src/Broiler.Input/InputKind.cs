@@ -10,4 +10,5 @@ public enum InputKind
     Touch,
     Pen,
     Gamepad,
+    Scanner,
 }

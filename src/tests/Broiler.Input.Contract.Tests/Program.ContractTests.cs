@@ -14,6 +14,8 @@ using Broiler.Input.Microphone;
 using Broiler.Input.Microphone.Windows;
 using Broiler.Input.Mouse;
 using Broiler.Input.Mouse.Windows;
+using Broiler.Input.Scanner;
+using Broiler.Input.Scanner.Windows;
 using Broiler.Input.Testing;
 using Broiler.Input.Windows;
 
@@ -37,6 +39,7 @@ internal static partial class Program
             typeof(WindowsKeyboardInputDevice).Assembly,
             typeof(MouseInputDevice).Assembly,
             typeof(WindowsMouseInputDevice).Assembly,
+            typeof(ScannerInputDevice).Assembly,
         ];
 
         foreach (Assembly assembly in assemblies)
@@ -44,9 +47,19 @@ internal static partial class Program
             string[] references = [.. assembly.GetReferencedAssemblies().Select(static reference => reference.Name ?? string.Empty)];
             AssertFalse(references.Any(static reference =>
                     reference.Contains("Camera", StringComparison.Ordinal) ||
-                    reference.Contains("Microphone", StringComparison.Ordinal)),
-                $"{assembly.GetName().Name} must not reference Camera or Microphone assemblies.");
+                    reference.Contains("Microphone", StringComparison.Ordinal) ||
+                    reference.Contains("Scanner", StringComparison.Ordinal)),
+                $"{assembly.GetName().Name} must not reference Camera, Microphone, or Scanner assemblies.");
         }
+
+        string[] scannerReferences = [.. typeof(ScannerInputDevice).Assembly.GetReferencedAssemblies().Select(static reference => reference.Name ?? string.Empty)];
+        AssertFalse(scannerReferences.Any(static reference =>
+                reference.Contains("Camera", StringComparison.Ordinal) ||
+                reference.Contains("Microphone", StringComparison.Ordinal) ||
+                reference.Contains("Keyboard", StringComparison.Ordinal) ||
+                reference.Contains("Mouse", StringComparison.Ordinal) ||
+                reference.Contains("Windows", StringComparison.OrdinalIgnoreCase)),
+            "Broiler.Input.Scanner must only reference Broiler.Input.");
     }
 
     private static void ProjectsUseDeclaredPackages()
@@ -143,6 +156,29 @@ internal static partial class Program
         AssertEqual(InputModifiers.None, unmodified.Modifiers, "Modifiers default to None.");
     }
 
+    private static void ScannerKindAndSharedWindowsComHelpers()
+    {
+        InputDeviceDescriptor descriptor = new(
+            InputDeviceId.FromOpaqueValue("test:scanner"),
+            InputKind.Scanner,
+            "Test scanner");
+        AssertEqual(InputKind.Scanner, descriptor.Kind, "Scanner input kind is supported on descriptors.");
+
+        if (OperatingSystem.IsWindows())
+        {
+            using WindowsComApartmentScope scope = WindowsComApartmentScope.Enter(
+                static hresult => new InvalidOperationException($"COM init failed: 0x{hresult:X8}"));
+            scope.Dispose();
+            scope.Dispose();
+
+            using WindowsComApartmentScope bestEffort = WindowsComApartmentScope.EnterBestEffort();
+            bestEffort.Dispose();
+
+            AssertTrue(WindowsComInterop.Wrap<object>(IntPtr.Zero) is null, "Null COM pointer wraps to null.");
+            WindowsComInterop.Release(null);
+        }
+    }
+
     private static void PublicApiBaselineMatches()
     {
         string baselinePath = Path.Combine(AppContext.BaseDirectory, "api-baseline.txt");
@@ -155,6 +191,7 @@ internal static partial class Program
             typeof(InputDevice).Assembly,
             typeof(CameraInputDevice).Assembly,
             typeof(WindowsCameraProvider).Assembly,
+            typeof(WindowsScannerProvider).Assembly,
             typeof(WindowsInputMessage).Assembly,
             typeof(KeyboardInputDevice).Assembly,
             typeof(WindowsKeyboardInputDevice).Assembly,
@@ -163,6 +200,7 @@ internal static partial class Program
             typeof(WindowsMicrophoneProvider).Assembly,
             typeof(MouseInputDevice).Assembly,
             typeof(WindowsMouseInputDevice).Assembly,
+            typeof(ScannerInputDevice).Assembly,
         ];
 
         string[] actual = [.. 

@@ -1,3 +1,4 @@
+using Broiler.Input.Windows;
 using Broiler.Native.Windows;
 using Broiler.Native.Windows.MediaFoundation;
 using System;
@@ -8,18 +9,14 @@ namespace Broiler.Input.Camera.Windows;
 [SupportedOSPlatform("windows")]
 internal sealed class MediaFoundationPlatformScope : IDisposable
 {
-    private readonly bool _shouldUninitializeCom;
+    private readonly WindowsComApartmentScope _comApartment;
     private bool _mediaFoundationStarted;
     private bool _disposed;
 
     public MediaFoundationPlatformScope()
     {
-        int comResult = ComNative.CoInitializeEx(IntPtr.Zero, ComNative.COINIT_MULTITHREADED);
-
-        if (comResult == ComNative.S_OK || comResult == ComNative.S_FALSE)
-            _shouldUninitializeCom = true;
-        else if (comResult != ComNative.RPC_E_CHANGED_MODE)
-            throw WindowsCameraFaults.CreateException(comResult, "COM initialization failed.", "COM");
+        _comApartment = WindowsComApartmentScope.Enter(
+            static hresult => WindowsCameraFaults.CreateException(hresult, "COM initialization failed.", "COM"));
 
         try
         {
@@ -31,9 +28,7 @@ internal sealed class MediaFoundationPlatformScope : IDisposable
         }
         catch
         {
-            if (_shouldUninitializeCom)
-                ComNative.CoUninitialize();
-
+            _comApartment.Dispose();
             throw;
         }
     }
@@ -46,51 +41,8 @@ internal sealed class MediaFoundationPlatformScope : IDisposable
         if (_mediaFoundationStarted)
             _ = MediaFoundationPlatformNative.MFShutdown();
 
-        if (_shouldUninitializeCom)
-            ComNative.CoUninitialize();
-
+        _comApartment.Dispose();
         _disposed = true;
-    }
-}
-
-/// <summary>
-/// Bridges raw COM pointers into the source-generated interop of Broiler.Native.Windows.
-/// </summary>
-[SupportedOSPlatform("windows")]
-internal static class WindowsComInterop
-{
-    /// <summary>
-    /// Wraps a raw interface pointer the caller owns and releases that reference: the wrapper
-    /// holds its own. Returns <see langword="null"/> for a null pointer or when the object does
-    /// not implement <typeparamref name="TInterface"/>.
-    /// </summary>
-    public static TInterface? Wrap<TInterface>(IntPtr pointer) where TInterface : class
-    {
-        if (pointer == IntPtr.Zero)
-            return null;
-
-        try
-        {
-            return ComNative.GetOrCreateComObject<TInterface>(pointer);
-        }
-        catch (InvalidCastException)
-        {
-            return null;
-        }
-        finally
-        {
-            ComNative.ReleaseIUnknown(pointer);
-        }
-    }
-
-    /// <summary>
-    /// Releases a COM object early where the interop allows it. Source-generated wrappers are
-    /// cached per COM identity and released by their finalizer, so this is a no-op for them.
-    /// </summary>
-    public static void Release(object? value)
-    {
-        if (value is not null)
-            ComNative.ReleaseComObject(value);
     }
 }
 
@@ -165,4 +117,3 @@ internal static class WindowsCameraFaults
         _ => null,
     };
 }
-

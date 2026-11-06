@@ -74,7 +74,8 @@ internal sealed class WindowsMicrophoneCaptureSession : IDisposable, IAsyncDispo
         Interlocked.Exchange(ref _silentCount, 0);
         Interlocked.Exchange(ref _discontinuousCount, 0);
 
-        using WindowsComApartmentScope apartment = WindowsComApartmentScope.Enter();
+        using WindowsComApartmentScope apartment = WindowsComApartmentScope.Enter(
+            static hresult => WindowsMicrophoneFaults.CreateException(hresult, "COM initialization failed."));
         object? enumeratorObject = null;
         IMMDevice? endpoint = null;
         object? audioClientObject = null;

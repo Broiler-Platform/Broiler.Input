@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -20,6 +20,8 @@
     <ProjectReference Include="..\..\Broiler.Input.Linux\Broiler.Input.Linux.csproj" />
     <ProjectReference Include="..\..\Broiler.Input.Keyboard.Linux\Broiler.Input.Keyboard.Linux.csproj" />
     <ProjectReference Include="..\..\Broiler.Input.Mouse.Linux\Broiler.Input.Mouse.Linux.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Scanner\Broiler.Input.Scanner.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Scanner.Linux\Broiler.Input.Scanner.Linux.csproj" />
   </ItemGroup>
 
 </Project>

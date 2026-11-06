@@ -15,6 +15,7 @@
     <ProjectReference Include="..\..\Broiler.Input\Broiler.Input.csproj" />
     <ProjectReference Include="..\..\Broiler.Input.Camera\Broiler.Input.Camera.csproj" />
     <ProjectReference Include="..\..\Broiler.Input.Microphone\Broiler.Input.Microphone.csproj" />
+    <ProjectReference Include="..\..\Broiler.Input.Scanner\Broiler.Input.Scanner.csproj" />
   </ItemGroup>
 
 </Project>

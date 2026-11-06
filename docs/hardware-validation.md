@@ -49,3 +49,21 @@ Hardware evidence must prove:
   to documented flags or faults.
 - Stop/dispose releases camera indicators/resources and produces no later frame
   callback.
+
+## Scanner
+
+- Flatbed and ADF scanners enumerate with stable opaque IDs (`windows:wia:scanner:<hash>`,
+  `linux:sane:scanner:<hash>`, `android:scanner:<id>`) across `RefreshDevicesAsync`.
+- Flatbed single-page acquisition at 150 DPI and 300 DPI (`Rgb24` and `Grayscale8`)
+  produces top-down `ScannerPageLease` buffers with accurate plane metadata.
+- Multi-page ADF simplex and duplex batch acquisition sets `ScannerPageFlags.DuplexBackSide`
+  on odd pages and transitions smoothly to `ScannerCaptureState.Completed` when the
+  feeder empties (`WIA_ERROR_PAPER_EMPTY` / `SANE_STATUS_NO_DOCS`) after page > 0, or
+  faults with `ScannerFaultCode.FeederEmpty` when empty at job start.
+- Physical paper jam, cover open, lamp failure, and multi-feed conditions map to the
+  documented `InputErrorCategory` and `ScannerFaultCode` values.
+- Slow consumer backpressure and `StopAsync()` / `Dispose()` mid-scan cancel the active
+  transfer (`IWiaTransfer::Cancel` / `sane_cancel`) promptly without deadlocking or
+  delivering late callbacks.
+- Diagnostics and descriptor capabilities omit raw scanned image bytes and unredacted
+  native device paths (`/dev/bus/usb/...`).

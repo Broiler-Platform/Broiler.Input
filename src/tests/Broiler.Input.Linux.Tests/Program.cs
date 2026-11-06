@@ -10,10 +10,12 @@ using Broiler.Input.Keyboard;
 using Broiler.Input.Keyboard.Linux;
 using Broiler.Input.Mouse;
 using Broiler.Input.Mouse.Linux;
+using Broiler.Input.Scanner;
+using Broiler.Input.Scanner.Linux;
 
 namespace Broiler.Input.Linux.Tests;
 
-internal static class Program
+internal static partial class Program
 {
     private static async Task<int> Main()
     {
@@ -31,6 +33,9 @@ internal static class Program
             ("linux providers require raw input acknowledgement", LinuxProvidersRequireRawInputAcknowledgement),
             ("keyboard translator maps keys modifiers and repeat", () => RunSync(KeyboardTranslatorMapsKeysModifiersAndRepeat)),
             ("mouse translator maps movement buttons and wheels", () => RunSync(MouseTranslatorMapsMovementButtonsAndWheels)),
+            ("linux scanner discovery redacts native device name and tracks changes", LinuxScannerDiscoveryRedactsNativeDeviceNameAndTracksChanges),
+            ("linux scanner negotiates options and completes batch on no docs", LinuxScannerNegotiatesOptionsAndCompletesMultiPageBatchOnNoDocs),
+            ("linux scanner maps faults and supports callback stop", LinuxScannerMapsFaultsAndSupportsCallbackStop),
             ("linux input assemblies avoid graphics and windows references", () => RunSync(LinuxAssembliesAvoidGraphicsAndWindowsReferences)),
         };
 
@@ -66,6 +71,8 @@ internal static class Program
         LinuxInputDependencyReport report = LinuxInputDependencies.CheckBaseline();
         AssertTrue(report.NativeLibraries.Any(static status => status.Id == "udev"),
             "Input dependency probe should include udev.");
+        AssertTrue(report.NativeLibraries.Any(static status => status.Id == "sane"),
+            "Input dependency probe should include sane.");
         AssertTrue(report.NativeLibraries.All(static status => !string.IsNullOrWhiteSpace(status.Diagnostic)),
             "Native dependency statuses should carry diagnostics.");
         AssertTrue(!string.IsNullOrWhiteSpace(report.EventDevices.Diagnostic),
@@ -302,6 +309,7 @@ internal static class Program
             typeof(LinuxInputDependencies).Assembly,
             typeof(LinuxKeyboardProvider).Assembly,
             typeof(LinuxMouseProvider).Assembly,
+            typeof(LinuxScannerProvider).Assembly,
         ];
 
         foreach (Assembly assembly in assemblies)
