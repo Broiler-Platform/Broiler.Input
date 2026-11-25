@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using NativeSane = Broiler.Native.Linux.Scanner;
 
 namespace Broiler.Input.Scanner.Linux;
 
@@ -91,85 +92,13 @@ internal interface ILinuxSaneInterop
 
 internal sealed class NativeLinuxSaneInterop : ILinuxSaneInterop
 {
-    private const string LibraryName = "libsane.so.1";
-    private const int SaneActionGetValue = 0;
-    private const int SaneActionSetValue = 1;
-    private const int SaneFixedScaleShift = 16;
-
     public static NativeLinuxSaneInterop Shared { get; } = new();
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativeSaneDevice
-    {
-        public IntPtr Name;
-        public IntPtr Vendor;
-        public IntPtr Model;
-        public IntPtr Type;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativeSaneOptionDescriptor
-    {
-        public IntPtr Name;
-        public IntPtr Title;
-        public IntPtr Desc;
-        public SaneValueType Type;
-        public SaneUnit Unit;
-        public int Size;
-        public int Cap;
-        public int ConstraintType;
-        public IntPtr Constraint;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativeSaneParameters
-    {
-        public SaneFrame Format;
-        public int LastFrame;
-        public int BytesPerLine;
-        public int PixelsPerLine;
-        public int Lines;
-        public int Depth;
-    }
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    private static extern SaneStatus sane_init(out int versionCode, IntPtr authorize);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    private static extern void sane_exit();
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    private static extern SaneStatus sane_get_devices(out IntPtr deviceList, int localOnly);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    private static extern SaneStatus sane_open([MarshalAs(UnmanagedType.LPUTF8Str)] string deviceName, out IntPtr handle);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    private static extern void sane_close(IntPtr handle);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    private static extern IntPtr sane_get_option_descriptor(IntPtr handle, int option);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    private static extern SaneStatus sane_control_option(IntPtr handle, int option, int action, IntPtr value, out int info);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    private static extern SaneStatus sane_get_parameters(IntPtr handle, out NativeSaneParameters parameters);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    private static extern SaneStatus sane_start(IntPtr handle);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    private static extern SaneStatus sane_read(IntPtr handle, IntPtr data, int maxLength, out int length);
-
-    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
-    private static extern void sane_cancel(IntPtr handle);
 
     public SaneStatus Init(out int versionCode)
     {
         try
         {
-            return sane_init(out versionCode, IntPtr.Zero);
+            return (SaneStatus)NativeSane.LinuxSaneNative.Init(out versionCode, IntPtr.Zero);
         }
         catch (DllNotFoundException)
         {
@@ -182,7 +111,7 @@ internal sealed class NativeLinuxSaneInterop : ILinuxSaneInterop
     {
         try
         {
-            sane_exit();
+            NativeSane.LinuxSaneNative.Exit();
         }
         catch (DllNotFoundException)
         {
@@ -194,7 +123,7 @@ internal sealed class NativeLinuxSaneInterop : ILinuxSaneInterop
         devices = [];
         try
         {
-            SaneStatus status = sane_get_devices(out IntPtr deviceList, localOnly ? 1 : 0);
+            SaneStatus status = (SaneStatus)NativeSane.LinuxSaneNative.GetDevices(out IntPtr deviceList, localOnly ? 1 : 0);
             if (status != SaneStatus.Good || deviceList == IntPtr.Zero)
                 return status;
 
@@ -205,7 +134,7 @@ internal sealed class NativeLinuxSaneInterop : ILinuxSaneInterop
                 if (entryPtr == IntPtr.Zero)
                     break;
 
-                NativeSaneDevice native = Marshal.PtrToStructure<NativeSaneDevice>(entryPtr);
+                NativeSane.SaneDevice native = Marshal.PtrToStructure<NativeSane.SaneDevice>(entryPtr);
                 string? name = Marshal.PtrToStringUTF8(native.Name);
                 if (string.IsNullOrWhiteSpace(name))
                     continue;
@@ -229,7 +158,7 @@ internal sealed class NativeLinuxSaneInterop : ILinuxSaneInterop
     {
         try
         {
-            return sane_open(deviceName, out handle);
+            return (SaneStatus)NativeSane.LinuxSaneNative.Open(deviceName, out handle);
         }
         catch (DllNotFoundException)
         {
@@ -241,13 +170,13 @@ internal sealed class NativeLinuxSaneInterop : ILinuxSaneInterop
     public void Close(IntPtr handle)
     {
         if (handle != IntPtr.Zero)
-            sane_close(handle);
+            NativeSane.LinuxSaneNative.Close(handle);
     }
 
     public bool TrySetStringOption(IntPtr handle, string optionName, string value)
     {
-        if (!TryFindOption(handle, optionName, out int index, out NativeSaneOptionDescriptor descriptor) ||
-            descriptor.Type != SaneValueType.String)
+        if (!TryFindOption(handle, optionName, out int index, out NativeSane.SaneOptionDescriptor descriptor) ||
+            descriptor.Type != NativeSane.SaneValueType.String)
         {
             return false;
         }
@@ -255,7 +184,7 @@ internal sealed class NativeLinuxSaneInterop : ILinuxSaneInterop
         IntPtr utf8 = Marshal.StringToCoTaskMemUTF8(value);
         try
         {
-            return sane_control_option(handle, index, SaneActionSetValue, utf8, out _) == SaneStatus.Good;
+            return NativeSane.LinuxSaneNative.ControlOption(handle, index, NativeSane.SaneAction.SetValue, utf8, out _) == NativeSane.SaneStatus.Good;
         }
         finally
         {
@@ -265,27 +194,27 @@ internal sealed class NativeLinuxSaneInterop : ILinuxSaneInterop
 
     public unsafe bool TrySetIntOrFixedOption(IntPtr handle, string optionName, double value)
     {
-        if (!TryFindOption(handle, optionName, out int index, out NativeSaneOptionDescriptor descriptor))
+        if (!TryFindOption(handle, optionName, out int index, out NativeSane.SaneOptionDescriptor descriptor))
             return false;
 
         int rawValue = descriptor.Type switch
         {
-            SaneValueType.Int => (int)Math.Round(value),
-            SaneValueType.Fixed => (int)Math.Round(value * (1 << SaneFixedScaleShift)),
+            NativeSane.SaneValueType.Int => (int)Math.Round(value),
+            NativeSane.SaneValueType.Fixed => (int)Math.Round(value * (1 << NativeSane.LinuxSaneNative.SANE_FIXED_SCALE_SHIFT)),
             _ => 0,
         };
 
-        if (descriptor.Type is not (SaneValueType.Int or SaneValueType.Fixed))
+        if (descriptor.Type is not (NativeSane.SaneValueType.Int or NativeSane.SaneValueType.Fixed))
             return false;
 
-        return sane_control_option(handle, index, SaneActionSetValue, (IntPtr)(&rawValue), out _) == SaneStatus.Good;
+        return NativeSane.LinuxSaneNative.ControlOption(handle, index, NativeSane.SaneAction.SetValue, (IntPtr)(&rawValue), out _) == NativeSane.SaneStatus.Good;
     }
 
     public SaneStatus GetParameters(IntPtr handle, out SaneParameters parameters)
     {
-        SaneStatus status = sane_get_parameters(handle, out NativeSaneParameters native);
+        SaneStatus status = (SaneStatus)NativeSane.LinuxSaneNative.GetParameters(handle, out NativeSane.SaneParameters native);
         parameters = new SaneParameters(
-            native.Format,
+            (SaneFrame)native.Format,
             native.LastFrame != 0,
             native.BytesPerLine,
             native.PixelsPerLine,
@@ -294,38 +223,38 @@ internal sealed class NativeLinuxSaneInterop : ILinuxSaneInterop
         return status;
     }
 
-    public SaneStatus Start(IntPtr handle) => sane_start(handle);
+    public SaneStatus Start(IntPtr handle) => (SaneStatus)NativeSane.LinuxSaneNative.Start(handle);
 
     public unsafe SaneStatus Read(IntPtr handle, Span<byte> buffer, out int bytesRead)
     {
         fixed (byte* ptr = buffer)
         {
-            return sane_read(handle, (IntPtr)ptr, buffer.Length, out bytesRead);
+            return (SaneStatus)NativeSane.LinuxSaneNative.Read(handle, (IntPtr)ptr, buffer.Length, out bytesRead);
         }
     }
 
     public void Cancel(IntPtr handle)
     {
         if (handle != IntPtr.Zero)
-            sane_cancel(handle);
+            NativeSane.LinuxSaneNative.Cancel(handle);
     }
 
-    private static unsafe bool TryFindOption(IntPtr handle, string optionName, out int optionIndex, out NativeSaneOptionDescriptor descriptor)
+    private static unsafe bool TryFindOption(IntPtr handle, string optionName, out int optionIndex, out NativeSane.SaneOptionDescriptor descriptor)
     {
         optionIndex = -1;
         descriptor = default;
 
         int count = 0;
-        if (sane_control_option(handle, 0, SaneActionGetValue, (IntPtr)(&count), out _) != SaneStatus.Good || count <= 0)
+        if (NativeSane.LinuxSaneNative.ControlOption(handle, 0, NativeSane.SaneAction.GetValue, (IntPtr)(&count), out _) != NativeSane.SaneStatus.Good || count <= 0)
             return false;
 
         for (int i = 1; i < count; i++)
         {
-            IntPtr descPtr = sane_get_option_descriptor(handle, i);
+            IntPtr descPtr = NativeSane.LinuxSaneNative.GetOptionDescriptor(handle, i);
             if (descPtr == IntPtr.Zero)
                 continue;
 
-            NativeSaneOptionDescriptor candidate = Marshal.PtrToStructure<NativeSaneOptionDescriptor>(descPtr);
+            NativeSane.SaneOptionDescriptor candidate = Marshal.PtrToStructure<NativeSane.SaneOptionDescriptor>(descPtr);
             string? name = Marshal.PtrToStringUTF8(candidate.Name);
             if (string.Equals(name, optionName, StringComparison.OrdinalIgnoreCase))
             {
